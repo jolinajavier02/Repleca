@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Features from './components/Features';
@@ -19,7 +19,7 @@ function App() {
   }, []);
 
   if (view === 'video') {
-    return <VideoEditor onBack={() => setView('projects')} />;
+    return <VideoEditor onStart={() => setView('projects')} />;
   }
 
   return (

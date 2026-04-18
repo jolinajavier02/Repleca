@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Plus, Play, SkipBack, SkipForward, Maximize, 
+  Plus, Play, SkipBack, SkipForward, 
   Scissors, Type, Music, Mic, Layers, Settings, Share2, Video
 } from 'lucide-react';
 
@@ -17,7 +17,10 @@ const VideoEditor: React.FC<{ onStart?: () => void }> = ({ onStart }) => {
         justifyContent: 'space-between',
         background: 'var(--bg-accent)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div 
+          onClick={onStart}
+          style={{ display: 'flex', alignItems: 'center', gap: '14px', fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 800, cursor: 'pointer' }}
+        >
           <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Autumn Travel Vlog</span>
           <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'var(--glass)', padding: '2px 8px', borderRadius: '4px' }}>Draft Saved</span>
         </div>

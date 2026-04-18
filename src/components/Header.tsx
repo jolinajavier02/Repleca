@@ -1,6 +1,10 @@
 import React from 'react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onStart?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onStart }) => {
   return (
     <header style={{
       height: '80px',
@@ -44,7 +48,7 @@ const Header: React.FC = () => {
                boxShadow: '0 8px 0 white, 0 -8px 0 white'
              }} />
           </div>
-          <span style={{ letterSpacing: '-0.04em' }}>CREATOR<span className="gradient-text">FLOW</span></span>
+          <span style={{ letterSpacing: '-0.04em' }}>REPLECA <span className="gradient-text">STUDIO</span></span>
         </div>
         
         <nav>
@@ -55,16 +59,18 @@ const Header: React.FC = () => {
           </ul>
         </nav>
 
-        <button style={{
-          padding: '10px 28px',
-          background: 'var(--gradient-primary)',
-          color: '#0A1128',
-          border: 'none',
-          borderRadius: '100px',
-          fontWeight: 700,
-          cursor: 'pointer',
-          fontSize: '0.9rem'
-        }}>
+        <button 
+          onClick={onStart}
+          style={{
+            padding: '10px 28px',
+            background: 'var(--gradient-primary)',
+            color: '#0A1128',
+            border: 'none',
+            borderRadius: '100px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontSize: '0.9rem'
+          }}>
           Join the Flow
         </button>
       </div>
