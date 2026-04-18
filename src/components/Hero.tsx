@@ -85,18 +85,23 @@ const Hero: React.FC<HeroProps> = ({ onStart }) => {
           transition={{ duration: 1, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
           style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}
         >
-          <a href="#" style={{
-            padding: '16px 40px',
-            borderRadius: '100px',
-            fontWeight: 700,
-            background: 'var(--gradient-primary)',
-            color: '#0A1128',
-            textDecoration: 'none',
-            fontSize: '1rem',
-            boxShadow: '0 10px 30px rgba(0, 255, 194, 0.2)'
-          }}>
+          <button 
+            onClick={onStart}
+            style={{
+              padding: '16px 40px',
+              borderRadius: '100px',
+              fontWeight: 700,
+              background: 'var(--gradient-primary)',
+              color: '#0D0D0D',
+              border: 'none',
+              textDecoration: 'none',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 10px 30px rgba(138, 43, 226, 0.2)'
+            }}
+          >
             Enter the Studio
-          </a>
+          </button>
           <a href="#" style={{
             padding: '16px 40px',
             borderRadius: '100px',

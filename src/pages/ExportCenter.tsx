@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, CheckCircle, Clock, Video, Smartphone, Camera, Send } from 'lucide-react';
+import { Download, CheckCircle, Video, Smartphone, Camera, Send } from 'lucide-react';
 
 const ExportCenter: React.FC = () => {
   return (
@@ -86,17 +86,19 @@ const ExportCenter: React.FC = () => {
                  </div>
               </div>
            </section>
-           <button style={{ 
-             width: '100%', 
-             padding: '16px', 
-             background: 'var(--gradient-primary)', 
-             border: 'none', 
-             borderRadius: '12px', 
-             color: '#0D0D0D', 
-             fontWeight: 700,
-             cursor: 'pointer'
-           }}>
-             Start Flow Render
+           <button style={{
+              padding: '16px 40px',
+              borderRadius: '100px',
+              fontWeight: 700,
+              background: 'var(--gradient-primary)',
+              color: '#0D0D0D',
+              border: 'none',
+              textDecoration: 'none',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 10px 30px rgba(138, 43, 226, 0.2)'
+            }}>
+             Enter the Studio
            </button>
         </div>
       </div>
