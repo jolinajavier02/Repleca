@@ -1,7 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+  onStart?: () => void;
+}
+
+const Hero: React.FC<HeroProps> = ({ onStart }) => {
   return (
     <section style={{ 
       paddingTop: '180px', 
