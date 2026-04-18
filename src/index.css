@@ -1,17 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-dark: #0D0D0D;
-  --bg-accent: #1A1A1A;
+  --bg-dark: #0A1128; /* Cobalt Depths */
+  --bg-accent: #0F1C3F;
   --text-primary: #F2F2F2;
-  --text-secondary: #A0A0A0;
-  --gradient-primary: linear-gradient(135deg, #8A2BE2 0%, #00FFFF 100%);
-  --accent-purple: #8A2BE2;
-  --accent-cyan: #00FFFF;
-  --glass: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.1);
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --text-secondary: #B0C4DE;
+  --gradient-primary: linear-gradient(135deg, #00FFC2 0%, #00BFFF 100%); /* Mint to Blue */
+  --accent-mint: #00FFC2;
+  --accent-blue: #00BFFF;
+  --glass: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
 }
 
 * {
@@ -30,6 +30,7 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
+  letter-spacing: -0.02em;
 }
 
 .gradient-text {
@@ -41,14 +42,21 @@ h1, h2, h3, h4 {
 
 .glass-panel {
   background: var(--glass);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(24px);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
 }
 
-/* Scrollbar */
+.glass-panel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-mint);
+  transform: translateY(-5px);
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -57,9 +65,5 @@ h1, h2, h3, h4 {
 
 ::-webkit-scrollbar-thumb {
   background: var(--bg-accent);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--border);
+  border-radius: 10px;
 }
