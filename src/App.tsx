@@ -6,12 +6,12 @@ import Sidebar from './components/Sidebar';
 import ProjectsPage from './pages/ProjectsPage';
 import VideoEditor from './pages/VideoEditor';
 import ExportCenter from './pages/ExportCenter';
+import AuthPage from './pages/AuthPage';
+import OnboardingPage from './pages/OnboardingPage';
 import { 
-  Home, 
+  Home as HomeIcon, 
   Folder, 
   PlusSquare, 
-  Smile, 
-  Library, 
   Share2, 
   TrendingUp, 
   Settings 
@@ -20,12 +20,30 @@ import {
 function App() {
   const [view, setView] = useState('landing');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleAuthComplete = (isNewUser: boolean) => {
+    setIsAuthenticated(true);
+    if (isNewUser) {
+      setView('onboarding');
+    } else {
+      setView('home');
+    }
+  };
+
+  if (view === 'auth') {
+    return <AuthPage onAuthComplete={handleAuthComplete} />;
+  }
+
+  if (view === 'onboarding') {
+    return <OnboardingPage onComplete={() => setView('home')} />;
+  }
 
   if (view === 'create' || view === 'video') {
     return <VideoEditor onStart={() => setView('projects')} />;
@@ -34,22 +52,22 @@ function App() {
   return (
     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: '100vh', background: 'var(--bg-dark)' }}>
       {/* Desktop Sidebar Navigation */}
-      {!isMobile && view !== 'landing' && (
+      {!isMobile && !['landing', 'auth', 'onboarding'].includes(view) && (
         <Sidebar activePage={view} onNavigate={setView} />
       )}
       
       <main style={{ 
         flex: 1, 
-        marginLeft: (!isMobile && view !== 'landing') ? '260px' : 0,
-        marginBottom: isMobile && view !== 'landing' ? '80px' : 0,
+        marginLeft: (!isMobile && !['landing', 'auth', 'onboarding'].includes(view)) ? '260px' : 0,
+        marginBottom: isMobile && !['landing', 'auth', 'onboarding'].includes(view) ? '80px' : 0,
         minHeight: '100vh',
         overflow: 'auto'
       }}>
         {view === 'landing' ? (
           <>
-            <Header onStart={() => setView('home')} />
+            <Header onStart={() => setView('auth')} />
             <div style={{ marginTop: '80px' }}>
-              <Hero onStart={() => setView('home')} />
+              <Hero onStart={() => setView('auth')} />
               <Features />
             </div>
             <footer style={{ padding: '50px 0', borderTop: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -59,7 +77,7 @@ function App() {
         ) : (
           <div style={{ minHeight: '100vh' }}>
             {/* View Header for Mobile */}
-            {isMobile && (
+            {isMobile && !['auth', 'onboarding'].includes(view) && (
                <header style={{ padding: '1.5rem', background: 'var(--bg-accent)', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
                   <span style={{ fontWeight: 800, letterSpacing: '-0.02em' }}>REPLECA <span className="gradient-text">STUDIO</span></span>
                </header>
@@ -85,7 +103,7 @@ function App() {
             {view === 'exports' && <ExportCenter />}
             
             {/* Catch-all for secondary pages */}
-            {!['home', 'projects', 'exports'].includes(view) && (
+            {!['home', 'projects', 'exports', 'landing', 'auth', 'onboarding'].includes(view) && (
               <div style={{ padding: '4rem', textAlign: 'center' }}>
                 <h1 style={{ fontSize: '2rem' }}>{view.charAt(0).toUpperCase() + view.slice(1).replace('-', ' ')}</h1>
                 <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>Our engineers are fine-tuning this studio for cinematic performance.</p>
@@ -101,8 +119,8 @@ function App() {
         )}
       </main>
 
-      {/* Mobile Bottom Navigation - 5 Primary Hubs as per common patterns */}
-      {isMobile && view !== 'landing' && (
+      {/* Mobile Bottom Navigation */}
+      {isMobile && !['landing', 'auth', 'onboarding'].includes(view) && (
         <nav style={{
           position: 'fixed',
           bottom: 0,
@@ -118,7 +136,7 @@ function App() {
           zIndex: 1000
         }}>
           {[
-            { id: 'home', icon: <Home size={22} />, label: 'Home' },
+            { id: 'home', icon: <HomeIcon size={22} />, label: 'Home' },
             { id: 'projects', icon: <Folder size={22} />, label: 'Projects' },
             { id: 'create', icon: <div style={{ background: 'var(--gradient-primary)', borderRadius: '12px', padding: '10px', display: 'flex', marginTop: '-20px' }}><PlusSquare size={24} color="#000" /></div>, label: '' },
             { id: 'publish', icon: <Share2 size={22} />, label: 'Publish' },
