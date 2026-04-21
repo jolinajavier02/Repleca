@@ -1,15 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap');
 
 :root {
+  /* Core Brand: Prismatic Obsidian */
   --bg-dark: #0D0D0D;
-  --bg-accent: #1A1A1A;
-  --text-primary: #F2F2F2;
-  --text-secondary: #A0A0A0;
+  --bg-accent: #151515;
+  --text-primary: #FFFFFF;
+  --text-secondary: #888888;
+  
+  /* Gradients */
   --gradient-primary: linear-gradient(135deg, #8A2BE2 0%, #00FFFF 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+  
+  /* Accents */
   --accent-purple: #8A2BE2;
   --accent-cyan: #00FFFF;
-  --glass: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.1);
+  --accent-mint: #00FFC2;
+  
+  /* Glassmorphism */
+  --glass: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.08);
+  --blur: 24px;
+  
+  /* Fonts */
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
@@ -18,45 +30,47 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  -webkit-font-smoothing: antialiased;
 }
 
 body {
+  font-family: var(--font-body);
   background-color: var(--bg-dark);
   color: var(--text-primary);
-  font-family: var(--font-body);
-  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4 {
+h1, h2, h3, h4, .brand-font {
   font-family: var(--font-heading);
-  letter-spacing: -0.02em;
 }
 
 .gradient-text {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
-  font-weight: 800;
+  color: transparent;
+  display: inline-block;
 }
 
 .glass-panel {
   background: var(--glass);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 16px;
   transition: all 0.3s ease;
 }
 
 .glass-panel:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--accent-mint);
-  transform: translateY(-5px);
+  border-color: rgba(0, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -64,6 +78,20 @@ h1, h2, h3, h4 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-accent);
+  background: var(--border);
   border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Animation Utilities */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s forwards ease-out;
 }

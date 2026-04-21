@@ -6,7 +6,16 @@ import Sidebar from './components/Sidebar';
 import ProjectsPage from './pages/ProjectsPage';
 import VideoEditor from './pages/VideoEditor';
 import ExportCenter from './pages/ExportCenter';
-import { Home, PlusSquare, Folder, Share2, User } from 'lucide-react';
+import { 
+  Home, 
+  Folder, 
+  PlusSquare, 
+  Smile, 
+  Library, 
+  Share2, 
+  TrendingUp, 
+  Settings 
+} from 'lucide-react';
 
 function App() {
   const [view, setView] = useState('landing');
@@ -18,13 +27,13 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (view === 'video') {
+  if (view === 'create' || view === 'video') {
     return <VideoEditor onStart={() => setView('projects')} />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
-      {/* Desktop Sidebar */}
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', minHeight: '100vh', background: 'var(--bg-dark)' }}>
+      {/* Desktop Sidebar Navigation */}
       {!isMobile && view !== 'landing' && (
         <Sidebar activePage={view} onNavigate={setView} />
       )}
@@ -33,50 +42,75 @@ function App() {
         flex: 1, 
         marginLeft: (!isMobile && view !== 'landing') ? '260px' : 0,
         marginBottom: isMobile && view !== 'landing' ? '80px' : 0,
-        minHeight: '100vh'
+        minHeight: '100vh',
+        overflow: 'auto'
       }}>
         {view === 'landing' ? (
           <>
-            <Header onStart={() => setView('projects')} />
+            <Header onStart={() => setView('home')} />
             <div style={{ marginTop: '80px' }}>
-              <Hero onStart={() => setView('projects')} />
+              <Hero onStart={() => setView('home')} />
               <Features />
             </div>
             <footer style={{ padding: '50px 0', borderTop: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <p>&copy; 2026 CreatorFlow Studio. All rights reserved.</p>
+              <p>&copy; 2026 Repleca Studio. All rights reserved.</p>
             </footer>
           </>
         ) : (
-          <>
+          <div style={{ minHeight: '100vh' }}>
+            {/* View Header for Mobile */}
+            {isMobile && (
+               <header style={{ padding: '1.5rem', background: 'var(--bg-accent)', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
+                  <span style={{ fontWeight: 800, letterSpacing: '-0.02em' }}>REPLECA <span className="gradient-text">STUDIO</span></span>
+               </header>
+            )}
+
+            {view === 'home' && (
+              <div style={{ padding: '3rem' }}>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>Welcome back, <span className="gradient-text">Creator</span></h1>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                   <div className="glass-panel" style={{ padding: '2rem', cursor: 'pointer' }} onClick={() => setView('create')}>
+                      <PlusSquare size={32} color="var(--accent-cyan)" />
+                      <h3 style={{ marginTop: '1rem' }}>Start Fresh Flow</h3>
+                   </div>
+                   <div className="glass-panel" style={{ padding: '2rem' }}>
+                      <TrendingUp size={32} color="var(--accent-purple)" />
+                      <h3 style={{ marginTop: '1rem' }}>Last 7 Days: +15.4k Views</h3>
+                   </div>
+                </div>
+              </div>
+            )}
+
             {view === 'projects' && <ProjectsPage />}
             {view === 'exports' && <ExportCenter />}
-            {/* Placeholder for other pages */}
-            {(!['projects', 'video', 'exports'].includes(view)) && (
+            
+            {/* Catch-all for secondary pages */}
+            {!['home', 'projects', 'exports'].includes(view) && (
               <div style={{ padding: '4rem', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '2rem' }}>{view.charAt(0).toUpperCase() + view.slice(1)} Studio</h1>
-                <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>The Flow is currently being optimized for this section.</p>
+                <h1 style={{ fontSize: '2rem' }}>{view.charAt(0).toUpperCase() + view.slice(1).replace('-', ' ')}</h1>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>Our engineers are fine-tuning this studio for cinematic performance.</p>
                 <button 
-                  onClick={() => setView('projects')}
-                  style={{ marginTop: '2rem', background: 'var(--gradient-primary)', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}
+                  onClick={() => setView('home')}
+                  style={{ marginTop: '2rem', background: 'var(--gradient-primary)', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', color: 'white', fontWeight: 700 }}
                 >
-                  Back to Workspace
+                  Back to Dashboard
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
       </main>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation - 5 Primary Hubs as per common patterns */}
       {isMobile && view !== 'landing' && (
         <nav style={{
           position: 'fixed',
           bottom: 0,
           left: 0,
           right: 0,
-          height: '70px',
-          background: 'rgba(10, 17, 40, 0.9)',
-          backdropFilter: 'blur(20px)',
+          height: '75px',
+          background: 'rgba(13, 13, 13, 0.95)',
+          backdropFilter: 'blur(32px)',
           borderTop: '1px solid var(--border)',
           display: 'flex',
           justifyContent: 'space-around',
@@ -84,11 +118,11 @@ function App() {
           zIndex: 1000
         }}>
           {[
-            { id: 'projects', icon: <Home size={24} /> },
-            { id: 'video', icon: <PlusSquare size={24} /> },
-            { id: 'library', icon: <Folder size={24} /> },
-            { id: 'publish', icon: <Share2 size={24} /> },
-            { id: 'profile', icon: <User size={24} /> },
+            { id: 'home', icon: <Home size={22} />, label: 'Home' },
+            { id: 'projects', icon: <Folder size={22} />, label: 'Projects' },
+            { id: 'create', icon: <div style={{ background: 'var(--gradient-primary)', borderRadius: '12px', padding: '10px', display: 'flex', marginTop: '-20px' }}><PlusSquare size={24} color="#000" /></div>, label: '' },
+            { id: 'publish', icon: <Share2 size={22} />, label: 'Publish' },
+            { id: 'settings', icon: <Settings size={22} />, label: 'More' },
           ].map(tab => (
             <button 
               key={tab.id}
@@ -96,11 +130,16 @@ function App() {
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: view === tab.id ? 'var(--accent-mint)' : 'var(--text-secondary)',
-                cursor: 'pointer'
+                color: view === tab.id ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
               {tab.icon}
+              {tab.label && <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{tab.label}</span>}
             </button>
           ))}
         </nav>

@@ -1,18 +1,14 @@
 import React from 'react';
 import { 
-  BarChart, 
   Folder, 
-  Video, 
-  Image as ImageIcon, 
-  Presentation, 
-  Mic, 
-  FileText, 
   Library, 
   Smile, 
   Settings,
   Share2,
   TrendingUp,
-  Download
+  PlusSquare,
+  Home,
+  Briefcase
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,18 +18,16 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate }) => {
   const navItems = [
+    { id: 'home', icon: <Home size={20} />, label: 'Home' },
     { id: 'projects', icon: <Folder size={20} />, label: 'Projects' },
-    { id: 'video', icon: <Video size={20} />, label: 'Video Studio' },
-    { id: 'image', icon: <ImageIcon size={20} />, label: 'Image Studio' },
-    { id: 'presentation', icon: <Presentation size={20} />, label: 'Presentations' },
-    { id: 'podcast', icon: <Mic size={20} />, label: 'Podcast' },
-    { id: 'script', icon: <FileText size={20} />, label: 'Script Writer' },
+    { id: 'create', icon: <PlusSquare size={20} />, label: 'Create New' },
     { id: 'templates', icon: <Smile size={20} />, label: 'Templates' },
-    { id: 'exports', icon: <Download size={20} />, label: 'Export Center' },
-    { id: 'publish', icon: <Share2 size={18} />, label: 'Publish Hub' },
-    { id: 'analytics', icon: <TrendingUp size={20} />, label: 'Analytics' },
     { id: 'library', icon: <Library size={20} />, label: 'Media Library' },
-    { id: 'brand', icon: <BarChart size={20} />, label: 'Brand Kit' },
+    { id: 'brand', icon: <Briefcase size={20} />, label: 'Brand Kit' },
+    { id: 'publish', icon: <Share2 size={18} />, label: 'Publish' },
+    { id: 'analytics', icon: <TrendingUp size={20} />, label: 'Analytics' },
+    { id: 'team', icon: <Share2 size={20} />, label: 'Team / Share' },
+    { id: 'settings', icon: <Settings size={20} />, label: 'Settings' },
   ];
 
   return (
