@@ -1,0 +1,11 @@
+name = "repleca-studio"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "repleca-db"
+database_id = "19967000-cdf2-472c-bc9e-4c4d1612f3b7"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "repleca-assets"

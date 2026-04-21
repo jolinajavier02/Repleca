@@ -1,23 +1,37 @@
 import React from 'react';
 import { Search, Plus, Filter, LayoutGrid, List, MoreVertical } from 'lucide-react';
 
-const projects = [
-  { id: 1, name: 'Autumn Travel Vlog', type: 'Video', status: 'published', date: '2h ago', preview: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=250&fit=crop' },
-  { id: 2, name: 'Q4 Business Pitch', type: 'Presentation', status: 'draft', date: '1d ago', preview: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=250&fit=crop' },
-  { id: 3, name: 'Podcast Cover Art', type: 'Image', status: 'exported', date: '3d ago', preview: 'https://images.unsplash.com/photo-1478737270239-2fccd2c7d921?w=400&h=250&fit=crop' },
-  { id: 4, name: 'School Report V2', type: 'Presentation', status: 'scheduled', date: '5d ago', preview: 'https://images.unsplash.com/photo-1546410531-bb4caa1b4247?w=400&h=250&fit=crop' },
-];
+import { api } from '../services/api';
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'published': return '#00FFC2';
-    case 'exported': return '#00BFFF';
+    case 'published': return '#00FFFF';
+    case 'exported': return '#8A2BE2';
     case 'scheduled': return '#FFD700';
     default: return 'var(--text-secondary)';
   }
 };
 
 const ProjectsPage: React.FC = () => {
+  const [projectList, setProjectList] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchProjects = async () => {
+      const data = await api.getProjects();
+      if (data && data.length > 0) {
+        setProjectList(data);
+      } else {
+        // Fallback to static dummy data if DB is empty
+        setProjectList([
+          { id: 1, name: 'Autumn Travel Vlog', type: 'Video', status: 'published', date: '2h ago', preview: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=250&fit=crop' },
+          { id: 2, name: 'Q4 Business Pitch', type: 'Presentation', status: 'draft', date: '1d ago', preview: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=250&fit=crop' },
+        ]);
+      }
+      setLoading(false);
+    };
+    fetchProjects();
+  }, []);
   return (
     <div style={{ padding: '2rem' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -82,7 +96,7 @@ const ProjectsPage: React.FC = () => {
         gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
         gap: '2rem' 
       }}>
-        {projects.map((project) => (
+        {projectList.map((project) => (
           <div key={project.id} className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ height: '160px', position: 'relative' }}>
                <img src={project.preview} alt={project.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
