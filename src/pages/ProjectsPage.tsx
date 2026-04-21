@@ -14,7 +14,7 @@ const getStatusColor = (status: string) => {
 
 const ProjectsPage: React.FC = () => {
   const [projectList, setProjectList] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     const fetchProjects = async () => {

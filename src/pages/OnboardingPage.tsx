@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { 
   Check, ChevronRight, ChevronLeft, Video, 
   Users, User, GraduationCap, Mic, BarChart, 
-  Youtube, Smartphone, Instagram, Facebook, Send, Linkedin,
-  Layers, Presentation, Palette, Upload
+  Smartphone, Send, 
+  Layers, Presentation, Palette, Upload, Play, Camera, MessageCircle, Briefcase
 } from 'lucide-react';
 
 interface OnboardingPageProps {
@@ -86,12 +86,12 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({ onComplete }) => {
             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Choose your primary platforms.</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                {[
-                 { icon: <Youtube />, label: 'YouTube' },
+                 { icon: <Play />, label: 'YouTube' },
                  { icon: <Smartphone />, label: 'TikTok' },
-                 { icon: <Instagram />, label: 'Instagram' },
-                 { icon: <Facebook />, label: 'Facebook' },
+                 { icon: <Camera />, label: 'Instagram' },
+                 { icon: <MessageCircle />, label: 'Facebook' },
                  { icon: <Send />, label: 'X (Twitter)' },
-                 { icon: <Linkedin />, label: 'LinkedIn' },
+                 { icon: <Briefcase />, label: 'LinkedIn' },
                  { icon: <Mic />, label: 'Podcast Platforms' }
                ].map((platform, i) => (
                  <button key={i} className="glass-panel" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px', color: 'white', cursor: 'pointer' }}>

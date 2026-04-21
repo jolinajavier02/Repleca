@@ -21,7 +21,6 @@ import {
   Home as HomeIcon, 
   Folder, 
   PlusSquare, 
-  Share2, 
   TrendingUp, 
   Settings 
 } from 'lucide-react';

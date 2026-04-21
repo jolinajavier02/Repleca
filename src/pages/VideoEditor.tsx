@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Plus, Play, SkipBack, SkipForward, 
-  Scissors, Type, Music, Mic, Layers, Settings, Share2, Video,
+  Scissors, Type, Music, Mic, Layers, Settings, Share2,
   Crop, RotateCcw, Maximize, Languages, Sparkles, Wand2, 
   Sticker, Gauge, RefreshCcw, Snowflake, Image as ImageIcon,
   FileText, Download, Send

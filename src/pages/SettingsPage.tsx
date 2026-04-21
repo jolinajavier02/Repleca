@@ -3,7 +3,7 @@ import {
   Settings as SettingsIcon, User, Briefcase, 
   CreditCard, Bell, Shield, 
   Database, Globe, Moon, Sun, 
-  Trash2, LogOut, ChevronRight
+  Trash2, LogOut
 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {

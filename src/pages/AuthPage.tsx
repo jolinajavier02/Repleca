@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Briefcase, Globe, Apple, Chrome, ArrowRight, Eye, EyeOff, Hash } from 'lucide-react';
+import { Mail, Lock, User, Briefcase, Globe, Apple, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface AuthPageProps {
   onAuthComplete: (isNewUser: boolean) => void;
@@ -200,7 +200,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthComplete }) => {
 
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button style={{ flex: 1, background: 'var(--bg-accent)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
-               <Chrome size={20} /> Google
+               <Globe size={20} /> Google
             </button>
             <button style={{ flex: 1, background: 'var(--bg-accent)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
                <Apple size={20} /> Apple
