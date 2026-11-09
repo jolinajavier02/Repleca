@@ -32,6 +32,7 @@ import {
   PanelRightClose,
 } from "lucide-react";
 import Brand from "../components/Brand";
+import AccountMenu from "../components/AccountMenu";
 import StudioArtwork from "../components/StudioArtwork";
 import {
   createProject,
@@ -73,13 +74,16 @@ export default function StudioEditor({
       params.has("template") &&
       Number.isInteger(template) &&
       template >= 0 &&
-      template <= 2
+      template <= 5
     ) {
       fresh.scenes[0].variant = template;
       fresh.title = [
         "SLOW DAYS.",
         "a fresh perspective.",
         "Ideas worth sharing.",
+        "SOUND GOOD.",
+        "MAKE YOUR MARK.",
+        "THE GOLDEN HOUR.",
       ][template];
       fresh.name = params.get("name") || fresh.name;
     }
@@ -380,7 +384,22 @@ export default function StudioEditor({
           >
             Export <ArrowUpRight size={16} />
           </button>
-          <span className="avatar">Y</span>
+          <AccountMenu
+            onNavigate={onNavigate}
+            onBeforeLogout={() => {
+              if (!dirty) return true;
+              try {
+                saveProject(project);
+                setDirty(false);
+                return true;
+              } catch {
+                setNotice(
+                  "Please download your project before logging out; device storage is full.",
+                );
+                return false;
+              }
+            }}
+          />
         </div>
       </header>
       <div className="editor-workspace">

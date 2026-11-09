@@ -207,7 +207,7 @@ export default function LandingPage({
                 </div>
                 <div className="mini-stage">
                   <div className="mini-canvas">
-                    <StudioArtwork />
+                    <StudioArtwork variant={4} />
                     <div className="mini-canvas-title">
                       SLOW DAYS.
                       <br />

@@ -25,13 +25,14 @@ import {
   Menu,
 } from "lucide-react";
 import Brand from "../components/Brand";
+import AccountMenu from "../components/AccountMenu";
 import StudioArtwork from "../components/StudioArtwork";
 import MediaLibrary from "./MediaLibrary";
 import BrandKit from "./BrandKit";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import ExportCenter from "./ExportCenter";
 import SettingsPage from "./SettingsPage";
-import { readProjects, saveProject } from "../lib/projects";
+import { readProjects, saveProject, projectStorageKey } from "../lib/projects";
 import type { StudioProject } from "../lib/projects";
 
 const navItems = [
@@ -86,15 +87,15 @@ const templates = [
     name: "The slow days podcast",
     mode: "podcast",
     label: "Audio",
-    variant: 0,
+    variant: 3,
   },
   {
     name: "Your next great story",
     mode: "script",
     label: "Script",
-    variant: 1,
+    variant: 4,
   },
-  { name: "A little golden hour", mode: "image", label: "Design", variant: 2 },
+  { name: "A little golden hour", mode: "image", label: "Design", variant: 5 },
 ];
 
 export default function Workspace({
@@ -148,7 +149,7 @@ export default function Workspace({
               s.duration < 1 ||
               !Number.isInteger(s.variant) ||
               s.variant < 0 ||
-              s.variant > 2,
+              s.variant > 5,
           ) ||
           !["16:9", "9:16", "1:1", "4:5"].includes(p.ratio) ||
           typeof p.title !== "string" ||
@@ -175,7 +176,7 @@ export default function Workspace({
   const removeProject = (id: string) => {
     try {
       const next = projects.filter((p) => p.id !== id);
-      localStorage.setItem("repleca-projects", JSON.stringify(next));
+      localStorage.setItem(projectStorageKey(), JSON.stringify(next));
       setProjects(next);
       setDeleteId(null);
     } catch {
@@ -275,7 +276,7 @@ export default function Workspace({
             <span className="device-label">
               <span className="status-dot" /> Saved on this device
             </span>
-            <span className="avatar">Y</span>
+            <AccountMenu onNavigate={onNavigate} />
           </div>
         </header>
         {["home", "projects", "templates"].includes(view) ? (
@@ -346,7 +347,7 @@ export default function Workspace({
                     </button>
                   </div>
                   <div className="banner-art">
-                    <StudioArtwork />
+                    <StudioArtwork variant={5} />
                     <span>
                       GOOD THINGS
                       <br />

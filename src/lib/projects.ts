@@ -20,9 +20,19 @@ export type StudioProject = {
   script: string;
   updated: string;
 };
+let projectOwner: string | null = null;
+export function setProjectOwner(id: string | null) {
+  projectOwner = id;
+}
+export function projectStorageKey() {
+  if (!projectOwner) throw new Error("Please log in to access your projects.");
+  return `repleca-projects:${projectOwner}`;
+}
 export function readProjects(): StudioProject[] {
   try {
-    const stored = JSON.parse(localStorage.getItem("repleca-projects") || "[]");
+    const stored = JSON.parse(
+      localStorage.getItem(projectStorageKey()) || "[]",
+    );
     return Array.isArray(stored)
       ? stored.filter(
           (p) => p && typeof p.id === "string" && Array.isArray(p.scenes),
@@ -35,7 +45,7 @@ export function readProjects(): StudioProject[] {
 export function saveProject(project: StudioProject) {
   const projects = readProjects();
   localStorage.setItem(
-    "repleca-projects",
+    projectStorageKey(),
     JSON.stringify([project, ...projects.filter((p) => p.id !== project.id)]),
   );
 }
@@ -69,7 +79,16 @@ export function createProject(mode: string): StudioProject {
       {
         id: crypto.randomUUID(),
         name: "A little escape",
-        variant: mode === "image" ? 1 : mode === "present" ? 2 : 0,
+        variant:
+          mode === "image"
+            ? 1
+            : mode === "present"
+              ? 2
+              : mode === "podcast"
+                ? 3
+                : mode === "script"
+                  ? 4
+                  : 0,
         duration: 8,
       },
       {
