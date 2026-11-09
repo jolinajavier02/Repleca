@@ -24,7 +24,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       typeof name !== "string" ||
       !name.trim() ||
       name.length > 160 ||
-      !["video", "image", "presentation", "podcast", "script"].includes(type)
+      ![
+        "video",
+        "image",
+        "presentation",
+        "present",
+        "podcast",
+        "script",
+        "printing",
+        "photo",
+        "document",
+        "excel",
+        "website",
+        "social",
+      ].includes(type)
     )
       return Response.json(
         { error: "Enter a valid project name and type." },

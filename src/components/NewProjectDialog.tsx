@@ -1,24 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import {
-  Film,
-  Image,
-  Presentation,
-  Mic,
-  Type,
-  Plus,
-  X,
-  ArrowUpRight,
-} from "lucide-react";
+import { Plus, X, ArrowUpRight } from "lucide-react";
+import { studioTypes } from "../lib/studio-types";
 import { startProject } from "../lib/projects";
 import type { StudioProject } from "../lib/projects";
-const types = [
-  { id: "video", label: "Video", icon: Film },
-  { id: "image", label: "Design", icon: Image },
-  { id: "present", label: "Slides", icon: Presentation },
-  { id: "podcast", label: "Audio", icon: Mic },
-  { id: "script", label: "Script", icon: Type },
-];
+const types = studioTypes;
 export default function NewProjectDialog({
   initialMode,
   onClose,
@@ -30,7 +16,9 @@ export default function NewProjectDialog({
 }) {
   const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
-  const [ratio, setRatio] = useState(initialMode === "image" ? "1:1" : "16:9");
+  const [ratio, setRatio] = useState(
+    studioTypes.find((t) => t.id === initialMode)?.ratio || "16:9",
+  );
   const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -106,7 +94,9 @@ export default function NewProjectDialog({
                 className={mode === id ? "active" : ""}
                 onClick={() => {
                   setMode(id);
-                  setRatio(id === "image" ? "1:1" : "16:9");
+                  setRatio(
+                    studioTypes.find((t) => t.id === id)?.ratio || "16:9",
+                  );
                 }}
               >
                 <Icon size={19} />

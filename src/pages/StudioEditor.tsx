@@ -33,6 +33,15 @@ import {
 } from "lucide-react";
 import Brand from "../components/Brand";
 import AccountMenu from "../components/AccountMenu";
+import MediaThumbnail from "../components/MediaThumbnail";
+import {
+  addMedia,
+  listMedia,
+  getMedia,
+  mediaDataUrl,
+  portableProject,
+} from "../lib/media";
+import type { MediaAsset } from "../lib/media";
 import StudioArtwork from "../components/StudioArtwork";
 import {
   createProject,
@@ -89,6 +98,8 @@ export default function StudioEditor({
     }
     return fresh;
   });
+  const [missingMedia, setMissingMedia] = useState(false);
+  const [library, setLibrary] = useState<MediaAsset[]>([]);
   const [past, setPast] = useState<StudioProject[]>([]);
   const [future, setFuture] = useState<StudioProject[]>([]);
   const [panel, setPanel] = useState("media");
@@ -204,6 +215,79 @@ export default function StudioEditor({
     window.addEventListener("beforeunload", unload);
     return () => window.removeEventListener("beforeunload", unload);
   }, [dirty]);
+  useEffect(() => {
+    let active = true;
+    void listMedia()
+      .then((files) => {
+        if (active) setLibrary(files);
+      })
+      .catch(() => {});
+    try {
+      saveProject(project);
+      const params = new URLSearchParams(query);
+      if (!params.has("id")) {
+        params.set("id", project.id);
+        history.replaceState(null, "", `#/editor-${mode}?${params}`);
+      }
+    } catch {
+      setNotice("Your project could not be saved. Check device storage.");
+    }
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const id = project.media?.assetId;
+    if (!id) return;
+    setMissingMedia(false);
+    let active = true;
+    let url = "";
+    void getMedia(id)
+      .then((asset) => {
+        if (!active) return;
+        if (!asset) {
+          setMissingMedia(true);
+          setNotice(
+            "This media file was deleted. Choose a replacement from Media.",
+          );
+          return;
+        }
+        url = URL.createObjectURL(asset.blob);
+        setProject((p) =>
+          p.media?.assetId === id
+            ? {
+                ...p,
+                media: {
+                  ...p.media,
+                  src: url,
+                  name: asset.name,
+                  type: asset.type,
+                },
+              }
+            : p,
+        );
+      })
+      .catch(() => {
+        if (active) setNotice("Could not load this media file.");
+      });
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [project.media?.assetId]);
+  useEffect(() => {
+    if (!dirty) return;
+    const timer = setTimeout(() => {
+      try {
+        saveProject(project);
+        setDirty(false);
+      } catch {
+        setNotice("Your device storage is full. Download your changes.");
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [project, dirty]);
   const leave = () => {
     if (dirty) {
       try {
@@ -222,24 +306,29 @@ export default function StudioEditor({
     setPlaying(false);
     setTime(project.scenes.slice(0, index).reduce((n, s) => n + s.duration, 0));
   };
-  const upload = (file?: File) => {
+  const upload = async (file?: File) => {
     if (!file) return;
     if (!/^(image|video|audio)\//.test(file.type)) {
-      setNotice("Choose an image, video, or audio file.");
+      setNotice(
+        "Choose an image, video, or audio file. Other files can be imported in Media.",
+      );
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      setNotice("Choose a file under 3 MB for this local workspace.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
+      const asset = await addMedia(file);
       edit({
-        media: { name: file.name, src: String(reader.result), type: file.type },
+        media: {
+          name: asset.name,
+          src: "",
+          type: asset.type,
+          assetId: asset.id,
+        },
       });
-      setNotice(`${file.name} added to your project.`);
-    };
-    reader.readAsDataURL(file);
+      setLibrary(await listMedia());
+      setNotice(`${file.name} added to your project and stored in Media.`);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not save this file.");
+    }
   };
   const splitScene = () => {
     const start = project.scenes
@@ -264,7 +353,7 @@ export default function StudioEditor({
     );
     edit({ scenes });
   };
-  const exportArtwork = () => {
+  const exportArtwork = async () => {
     const dims: Record<string, [number, number]> = {
       "16:9": [1920, 1080],
       "9:16": [1080, 1920],
@@ -284,8 +373,19 @@ export default function StudioEditor({
             "'": "&apos;",
           })[c]!,
       );
+    let imageSource = project.media?.src || "";
+    if (project.media?.assetId && project.media.type.startsWith("image/")) {
+      const asset = await getMedia(project.media.assetId);
+      if (!asset) {
+        setNotice(
+          "This file was deleted. Choose another image before exporting.",
+        );
+        return;
+      }
+      imageSource = await mediaDataUrl(asset.blob);
+    }
     const artwork = project.media?.type.startsWith("image/")
-      ? `<image href="${xml(project.media.src)}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
+      ? `<image href="${xml(imageSource)}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
       : renderToStaticMarkup(
           <StudioArtwork variant={activeScene.variant} />,
         ).replace("<svg", `<svg width="${w}" height="${h}"`);
@@ -378,6 +478,14 @@ export default function StudioEditor({
           >
             <Save size={15} /> Save
           </button>
+          {mode === "printing" && (
+            <button
+              className="button button-outline small"
+              onClick={() => window.print()}
+            >
+              Print
+            </button>
+          )}
           <button
             className="button button-orange small"
             onClick={() => setExportOpen(true)}
@@ -540,10 +648,46 @@ export default function StudioEditor({
                 <span>
                   Drop files here, or upload above.
                   <br />
-                  Images, video, and audio · up to 3 MB
+                  Images, video, and audio
                 </span>
               </div>
             </>
+          )}
+          {panel === "media" && library.length > 0 && (
+            <section className="editor-library">
+              <div className="asset-subhead">
+                From your media <span>{library.length}</span>
+              </div>
+              <div className="media-grid">
+                {library
+                  .filter(
+                    (asset) =>
+                      /^(image|video|audio)\//.test(asset.type) &&
+                      asset.name.toLowerCase().includes(search.toLowerCase()),
+                  )
+                  .map((asset) => (
+                    <button
+                      key={asset.id}
+                      className="media-item"
+                      onClick={() =>
+                        edit({
+                          media: {
+                            name: asset.name,
+                            type: asset.type,
+                            assetId: asset.id,
+                            src: "",
+                          },
+                        })
+                      }
+                    >
+                      <div>
+                        <MediaThumbnail asset={asset} />
+                      </div>
+                      <span>{asset.name}</span>
+                    </button>
+                  ))}
+              </div>
+            </section>
           )}
           {panel === "text" && (
             <>
@@ -761,7 +905,13 @@ export default function StudioEditor({
                     opacity: project.opacity / 100,
                   }}
                 >
-                  {project.media?.type.startsWith("image") ? (
+                  {project.media?.assetId && !project.media.src ? (
+                    <div className="canvas-file-state">
+                      {missingMedia
+                        ? "This file was removed from Media. Choose a replacement."
+                        : "Opening your media…"}
+                    </div>
+                  ) : project.media?.type.startsWith("image") ? (
                     <img src={project.media.src} alt={project.media.name} />
                   ) : project.media?.type.startsWith("video") ? (
                     <video
@@ -1314,13 +1464,22 @@ export default function StudioEditor({
         <p>Save your editable project or download your current artwork.</p>
         <button
           className="export-option"
-          onClick={() => {
-            downloadFile(
-              JSON.stringify(project, null, 2),
-              "application/json",
-              `${project.name}.repleca.json`,
-            );
-            setExportOpen(false);
+          onClick={async () => {
+            try {
+              const portable = await portableProject(project);
+              downloadFile(
+                JSON.stringify(portable, null, 2),
+                "application/json",
+                `${project.name}.repleca.json`,
+              );
+              setExportOpen(false);
+            } catch (error) {
+              setNotice(
+                error instanceof Error
+                  ? error.message
+                  : "Could not export this project.",
+              );
+            }
           }}
         >
           <Save size={22} />
@@ -1353,7 +1512,13 @@ export default function StudioEditor({
           <button
             className="export-option"
             disabled={project.media?.type.startsWith("video")}
-            onClick={exportArtwork}
+            onClick={() => {
+              void exportArtwork().catch(() =>
+                setNotice(
+                  "This artwork could not be exported. Try replacing the media file.",
+                ),
+              );
+            }}
           >
             <Image size={22} />
             <span>

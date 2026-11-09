@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "test:auth": "node --test tests/auth.test.ts"
+    "test:auth": "node --test tests/auth.test.ts",
+    "test": "node --test tests/*.test.ts"
   },
   "dependencies": {
     "framer-motion": "^12.38.0",

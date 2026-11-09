@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import LandingPage from "./pages/LandingPage";
 import { AuthProvider, useAuth } from "./lib/auth";
 const StudioEditor = lazy(() => import("./pages/StudioEditor"));
+const ContentEditor = lazy(() => import("./pages/ContentEditor"));
 const Workspace = lazy(() => import("./pages/Workspace"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
@@ -76,7 +77,7 @@ function AppRouter() {
         <span className="orange-text">✳</span> Opening your creative space…
       </div>
     );
-  if (view === "home")
+  if (["home", "brand", "analytics"].includes(view))
     return (
       <Workspace
         key={user?.id || "guest"}
@@ -89,6 +90,14 @@ function AppRouter() {
       />
     );
   if (view === "auth" || !user) return authPage;
+  if (["document", "excel", "website"].includes(view.slice(7).split("?")[0]))
+    return (
+      <ContentEditor
+        key={`${user.id}:${view}`}
+        mode={view.slice(7)}
+        onNavigate={navigate}
+      />
+    );
   if (view.startsWith("editor-"))
     return (
       <StudioEditor

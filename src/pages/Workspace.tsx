@@ -7,17 +7,13 @@ import {
   Folder,
   Image,
   LayoutTemplate,
-  Palette,
-  ChartNoAxesCombined,
   Download,
   Settings,
-  Film,
-  Presentation,
-  Mic,
-  Type,
   ChevronDown,
-  ArrowLeft,
   Upload,
+  MoreHorizontal,
+  Pencil,
+  Copy,
   List,
   Trash2,
   X,
@@ -27,12 +23,13 @@ import {
 import Brand from "../components/Brand";
 import AccountMenu from "../components/AccountMenu";
 import StudioArtwork from "../components/StudioArtwork";
+import ProjectThumbnail from "../components/ProjectThumbnail";
 import MediaLibrary from "./MediaLibrary";
-import BrandKit from "./BrandKit";
-import AnalyticsDashboard from "./AnalyticsDashboard";
 import ExportCenter from "./ExportCenter";
 import SettingsPage from "./SettingsPage";
 import { readProjects, saveProject, projectStorageKey } from "../lib/projects";
+import { addMedia, portableProject } from "../lib/media";
+import { studioTypes } from "../lib/studio-types";
 import NewProjectDialog from "../components/NewProjectDialog";
 import { useAuth } from "../lib/auth";
 import type { StudioProject } from "../lib/projects";
@@ -42,44 +39,6 @@ const navItems = [
   { id: "projects", label: "My projects", icon: Folder },
   { id: "templates", label: "Templates", icon: LayoutTemplate },
   { id: "media", label: "Media library", icon: Image },
-  { id: "brand", label: "Brand kit", icon: Palette },
-];
-const studioTypes = [
-  {
-    id: "video",
-    label: "Video",
-    desc: "Find your next great cut.",
-    icon: Film,
-    color: "peach",
-  },
-  {
-    id: "image",
-    label: "Design",
-    desc: "Give your ideas a look.",
-    icon: Image,
-    color: "lavender",
-  },
-  {
-    id: "present",
-    label: "Slides",
-    desc: "Make your point beautifully.",
-    icon: Presentation,
-    color: "yellow",
-  },
-  {
-    id: "podcast",
-    label: "Audio",
-    desc: "Make a little noise.",
-    icon: Mic,
-    color: "mint",
-  },
-  {
-    id: "script",
-    label: "Script",
-    desc: "Start with a few words.",
-    icon: Type,
-    color: "pink",
-  },
 ];
 const templates = [
   { name: "The slow edit", mode: "video", label: "Video", variant: 0 },
@@ -129,16 +88,27 @@ export default function Workspace({
   const [newMode, setNewMode] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
+  const [projectMenu, setProjectMenu] = useState<string | null>(null);
+  const [renameProject, setRenameProject] = useState<StudioProject | null>(
+    null,
+  );
+  const [renameValue, setRenameValue] = useState("");
+  const renameDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (renameProject) renameDialog.current?.showModal();
+    else renameDialog.current?.close();
+  }, [renameProject]);
+  useEffect(() => {
+    if (!projectMenu) return;
+    const close = (e: PointerEvent) => {
+      if (e.target instanceof Element && !e.target.closest(".project-options"))
+        setProjectMenu(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [projectMenu]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
-  const title =
-    view === "home"
-      ? "Your workspace"
-      : navItems.find((n) => n.id === view)?.label ||
-        { analytics: "Analytics", exports: "Exports", settings: "Settings" }[
-          view
-        ] ||
-        "Your workspace";
   const navigate = (page: string) => {
     setMobileMenu(false);
     setSearch("");
@@ -148,15 +118,13 @@ export default function Workspace({
   const importProject = (file?: File) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const p = JSON.parse(String(reader.result)) as StudioProject;
         if (
           !p.id ||
           typeof p.name !== "string" ||
-          !["video", "image", "present", "podcast", "script"].includes(
-            p.mode,
-          ) ||
+          !studioTypes.some((type) => type.id === p.mode) ||
           !Array.isArray(p.scenes) ||
           !p.scenes.length ||
           p.scenes.some(
@@ -172,6 +140,18 @@ export default function Workspace({
           typeof p.title !== "string" ||
           typeof p.subtitle !== "string" ||
           typeof p.script !== "string" ||
+          (p.stylesheet !== undefined && typeof p.stylesheet !== "string") ||
+          (p.cells !== undefined &&
+            (!Array.isArray(p.cells) ||
+              !p.cells.length ||
+              p.cells.length > 500 ||
+              p.cells.some(
+                (row) =>
+                  !Array.isArray(row) ||
+                  !row.length ||
+                  row.length > 50 ||
+                  row.some((cell) => typeof cell !== "string"),
+              ))) ||
           !/^#[0-9a-f]{6}$/i.test(p.color) ||
           ![p.scale, p.opacity, p.fontSize].every(Number.isFinite) ||
           (p.media &&
@@ -179,6 +159,18 @@ export default function Workspace({
               !/^(image|video|audio)\//.test(p.media.type)))
         )
           throw new Error();
+        if (p.media?.src.startsWith("data:")) {
+          const blob = await (await fetch(p.media.src)).blob();
+          const asset = await addMedia(
+            new File([blob], p.media.name, { type: p.media.type }),
+          );
+          p.media = {
+            name: asset.name,
+            type: asset.type,
+            assetId: asset.id,
+            src: "",
+          };
+        }
         saveProject(p);
         setProjects(readProjects());
         setNotice("Your project is ready. Open it below.");
@@ -221,20 +213,19 @@ export default function Workspace({
     >
       <aside className={`workspace-sidebar ${mobileMenu ? "is-open" : ""}`}>
         <div data-guest-allowed>
-          <Brand onClick={() => navigate("landing")} />
+          <Brand onClick={() => navigate("home")} />
         </div>
-        <button className="workspace-switcher" onClick={() => navigate("home")}>
-          <span className="workspace-avatar">
-            {user?.name.charAt(0).toUpperCase() || "G"}
-          </span>
-          <span>
-            {user
-              ? `${user.name.split(" ")[0]}’s creative space`
-              : "Your creative space"}
-            <small>{user ? "Personal workspace" : "Guest workspace"}</small>
-          </span>
-          <ChevronDown size={15} />
-        </button>
+        {user ? (
+          <AccountMenu placement="sidebar" onNavigate={onNavigate} />
+        ) : (
+          <button className="workspace-switcher">
+            <span className="workspace-avatar">G</span>
+            <span>
+              Your creative space<small>Guest workspace</small>
+            </span>
+            <ChevronDown size={15} />
+          </button>
+        )}
         <div className="sidebar-label">MAKE YOURSELF AT HOME</div>
         <nav aria-label="Workspace navigation">
           {navItems.map(({ id, label, icon: Icon }) => (
@@ -254,7 +245,6 @@ export default function Workspace({
         <div className="sidebar-label">A LITTLE MORE</div>
         <nav>
           {[
-            { id: "analytics", label: "Analytics", icon: ChartNoAxesCombined },
             { id: "exports", label: "Exports", icon: Download },
             { id: "settings", label: "Settings", icon: Settings },
           ].map(({ id, label, icon: Icon }) => (
@@ -276,13 +266,6 @@ export default function Workspace({
             Start creating <ArrowUpRight size={15} />
           </button>
         </div>
-        <button
-          className="back-website text-button"
-          data-guest-allowed
-          onClick={() => navigate("landing")}
-        >
-          <ArrowLeft size={16} /> Back to the website
-        </button>
       </aside>
       {mobileMenu && (
         <button
@@ -293,47 +276,14 @@ export default function Workspace({
         />
       )}
       <main className="workspace-main">
-        <header className="workspace-topbar">
-          <div>
-            <button
-              className="icon-button workspace-menu"
-              data-guest-allowed
-              onClick={() => setMobileMenu(!mobileMenu)}
-              aria-label="Open navigation"
-            >
-              <Menu size={20} />
-            </button>
-            <span>Workspace</span>
-            <span>/</span>
-            <b>{title}</b>
-          </div>
-          <div>
-            {user ? (
-              <>
-                <span className="device-label">
-                  <span className="status-dot" /> Saved on this device
-                </span>
-                <AccountMenu onNavigate={onNavigate} />
-              </>
-            ) : (
-              <div className="guest-account-actions" data-guest-allowed>
-                <span>Just looking around?</span>
-                <button
-                  className="text-button"
-                  onClick={() => requestAuth("login")}
-                >
-                  Log in
-                </button>
-                <button
-                  className="button button-orange small"
-                  onClick={() => requestAuth("signup")}
-                >
-                  Sign up <ArrowUpRight size={13} />
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
+        <button
+          className="icon-button workspace-menu workspace-menu-floating"
+          data-guest-allowed
+          onClick={() => setMobileMenu(!mobileMenu)}
+          aria-label="Open navigation"
+        >
+          <Menu size={20} />
+        </button>
         {["home", "projects", "templates"].includes(view) ? (
           <div className="workspace-content">
             <div className="workspace-page-heading">
@@ -459,17 +409,15 @@ export default function Workspace({
             </div>
             <div className="project-filters">
               <div>
-                {["All", "Video", "Design", "Slides", "Audio", "Script"].map(
-                  (f) => (
-                    <button
-                      key={f}
-                      className={filter === f ? "active" : ""}
-                      onClick={() => setFilter(f)}
-                    >
-                      {f}
-                    </button>
-                  ),
-                )}
+                {["All", ...studioTypes.map((type) => type.label)].map((f) => (
+                  <button
+                    key={f}
+                    className={filter === f ? "active" : ""}
+                    onClick={() => setFilter(f)}
+                  >
+                    {f}
+                  </button>
+                ))}
               </div>
               <div className="search-field">
                 <Search size={16} />
@@ -534,7 +482,7 @@ export default function Workspace({
                       className="project-thumbnail"
                       onClick={() => navigate(`editor-${p.mode}?id=${p.id}`)}
                     >
-                      <StudioArtwork variant={p.scenes[0]?.variant || 0} />
+                      <ProjectThumbnail project={p} />
                       <strong>{p.title}</strong>
                       <span className="project-open">
                         <ArrowUpRight size={20} />
@@ -572,13 +520,95 @@ export default function Workspace({
                           </button>
                         </div>
                       ) : (
-                        <button
-                          className="icon-button"
-                          aria-label={`Delete ${p.name}`}
-                          onClick={() => setDeleteId(p.id)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="project-options">
+                          <button
+                            className="icon-button"
+                            aria-label={`Options for project ${p.name}`}
+                            aria-expanded={projectMenu === p.id}
+                            onClick={() =>
+                              setProjectMenu(projectMenu === p.id ? null : p.id)
+                            }
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
+                          {projectMenu === p.id && (
+                            <div className="file-action-menu">
+                              <button
+                                onClick={() =>
+                                  navigate(`editor-${p.mode}?id=${p.id}`)
+                                }
+                              >
+                                <Pencil size={14} />
+                                Edit project
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRenameProject(p);
+                                  setRenameValue(p.name);
+                                  setProjectMenu(null);
+                                }}
+                              >
+                                <Pencil size={14} />
+                                Rename
+                              </button>
+                              <button
+                                onClick={() => {
+                                  try {
+                                    saveProject({
+                                      ...p,
+                                      id: crypto.randomUUID(),
+                                      name: `${p.name} copy`,
+                                      updated: new Date().toISOString(),
+                                    });
+                                    setProjects(readProjects());
+                                    setProjectMenu(null);
+                                  } catch {
+                                    setNotice(
+                                      "Could not copy this project. Check device storage.",
+                                    );
+                                  }
+                                }}
+                              >
+                                <Copy size={14} />
+                                Make a copy
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const portable = await portableProject(p);
+                                    const { downloadFile } =
+                                      await import("../lib/projects");
+                                    downloadFile(
+                                      JSON.stringify(portable, null, 2),
+                                      "application/json",
+                                      `${p.name}.repleca.json`,
+                                    );
+                                    setProjectMenu(null);
+                                  } catch (error) {
+                                    setNotice(
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Could not download this project.",
+                                    );
+                                  }
+                                }}
+                              >
+                                <Download size={14} />
+                                Download project
+                              </button>
+                              <button
+                                className="danger-text"
+                                onClick={() => {
+                                  setDeleteId(p.id);
+                                  setProjectMenu(null);
+                                }}
+                              >
+                                <Trash2 size={14} />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -610,11 +640,10 @@ export default function Workspace({
               </div>
             )}
           </div>
+        ) : view === "media" ? (
+          <MediaLibrary onNavigate={navigate} />
         ) : (
           <div className="legacy-page">
-            {view === "media" && <MediaLibrary />}
-            {view === "brand" && <BrandKit />}
-            {view === "analytics" && <AnalyticsDashboard />}
             {view === "exports" && <ExportCenter />}
             {view === "settings" && <SettingsPage />}
           </div>
@@ -624,6 +653,62 @@ export default function Workspace({
           <span>Made for your creative flow. ✳</span>
         </footer>
       </main>
+      <dialog
+        ref={renameDialog}
+        className="export-dialog"
+        aria-labelledby="rename-project-title"
+        onCancel={() => setRenameProject(null)}
+      >
+        <button
+          className="icon-button dialog-close"
+          aria-label="Close rename project"
+          onClick={() => setRenameProject(null)}
+        >
+          <X size={18} />
+        </button>
+        <h2 id="rename-project-title">Rename your project.</h2>
+        <form
+          className="new-project-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!renameProject || !renameValue.trim()) return;
+            try {
+              saveProject({
+                ...renameProject,
+                name: renameValue.trim(),
+                updated: new Date().toISOString(),
+              });
+              setProjects(readProjects());
+              setRenameProject(null);
+            } catch {
+              setNotice("Could not rename this project. Check device storage.");
+            }
+          }}
+        >
+          <label>
+            Project name
+            <input
+              aria-label="New project name"
+              required
+              maxLength={100}
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+            />
+          </label>
+          <div className="new-project-actions">
+            <button
+              type="button"
+              className="button button-outline small"
+              onClick={() => setRenameProject(null)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="button button-orange small">
+              Save name
+            </button>
+          </div>
+        </form>
+      </dialog>
       {newMode && (
         <NewProjectDialog
           initialMode={newMode}

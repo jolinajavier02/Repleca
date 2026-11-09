@@ -16,14 +16,14 @@ Open http://localhost:3000/Repleca/. The configured base path is `/Repleca/`.
 
 - Landing page with studio tabs, workflow, and template previews.
 - Workspace with searchable projects, templates, grid/list views, and project import.
-- Shared video, design, slide, audio, and script editing layouts.
-- Existing media library, brand kit, analytics, export, account, and settings screens with the updated visual theme.
+- Video, design, slides, audio, scripts, printing, photo editing, documents, Excel-compatible spreadsheets, websites, and social projects.
+- A file-first Media library, account menu inside the sidebar creative-space card, exports, and settings. Analytics and Brand Kit are removed from navigation.
 
 The editor supports scene selection, splitting and duplication, editable text, color palettes, scale/opacity, aspect ratios, media uploads, playback preview, and undo/redo. On mobile, tool and property panels open as drawers.
 
 ## Project storage and export
 
-Projects save to an account-specific list in this browser's local storage when Save is clicked or the editor's back button is used. Download a `.repleca.json` project file to back it up or import it on another browser. Local media uploads support images, video, and audio up to 3 MB; available browser storage limits the total saved media.
+All new projects and template drafts appear in Projects. Projects save to an account-specific list in this browser's local storage, with automatic saving, manual Save, and saving on editor exit. Download a `.repleca.json` project file to back it up or import it on another browser. Imported photos, videos, audio, documents, and other files are stored as Blobs in account-scoped IndexedDB. Uploads from both Media and the editors appear in Media. Browser storage availability limits the total saved media. Library-backed files are referenced by ID; temporary preview URLs are never persisted, and project downloads embed their referenced media.
 
 Artwork downloads as SVG and scripts as plain text. Video/audio rendering is not implemented. Local project storage is browser-based; signing in on another device does not synchronize those projects.
 
@@ -31,7 +31,7 @@ Artwork downloads as SVG and scripts as plain text. Video/audio rendering is not
 
 Open Studio opens a public workspace preview. Visitors can browse the screen; workspace action buttons show a reminder to log in or create an account. Editor and private workspace routes still require authentication. Creating an account returns to the login form with the email prefilled; signup does not create a session. A successful email/password login always opens the signed-in workspace. Passwords require at least 6 characters on both the signup form and server.
 
-New Project opens a setup dialog for the project name, type, and canvas format. Creating it immediately saves the project to the signed-in account’s local list and opens its editor using the saved ID. Cancel leaves the list unchanged. The creation shortcuts use the same flow. Logout returns to the guest workspace.
+New Project opens a setup dialog for the project name, type, and canvas format. Creating it immediately saves the project to the signed-in account’s local list and opens its editor using the saved ID. Cancel leaves the list unchanged. The creation shortcuts use the same flow. The workspace has no top header or website-back link. The creative-space card opens the account dropdown; Sign out revokes the session and returns to the landing page. The sidebar logo goes to the workspace.
 
 In `npm run dev` and `npm run preview`, the Vite server runs the account API with a persistent SQLite database at `.repleca/auth.sqlite`. This directory is ignored by Git and blocked from browser asset requests. Passwords are stored as salted scrypt hashes. Sessions use opaque HttpOnly, SameSite cookies, with Secure enabled on HTTPS; session tokens are stored hashed on the server. Signup and login enforce server-side validation and rate limits. Logout revokes the session, and saved projects are scoped by account ID. The original unassigned `repleca-projects` browser data is retained but isn't automatically assigned to a new account.
 
@@ -47,9 +47,17 @@ npx wrangler d1 migrations apply repleca-db --remote
 
 ```sh
 npm run build
-npm run test:auth
+npm test
 ```
 
 Desktop and mobile browser checks cover studio navigation, templates, uploads, text properties, undo/redo, splitting, playback, local save/reopen, project import/export, SVG export, and mobile drawers.
 
 Account tests cover signup validation, duplicate emails, password verification, cookie sessions, session rotation/expiry, logout, CSRF rejection, throttling, and persistence. Browser verification covers guest workspace actions and login reminders, signup → login → workspace, project creation and reopening, protected deep links, incorrect passwords, mobile forms, account-specific project lists, and distinct display artwork.
+
+## Media and the added studios
+
+Media defaults to a flat file grid with no sample folders. It supports multi-file upload and drag/drop, name/type search, file-type filters, newest/oldest/name/size/type sorting, and grid/list views. Per-file options offer preview, supported-file editing, rename, copy, move, download, and confirmed deletion. Create folders only when needed and use the folder filter to organize files; removing a folder keeps its files. A legacy project’s embedded media is migrated into the library without duplicating it on refresh. Deleting a referenced file keeps the project and asks for replacement media.
+
+Printing uses the visual editor with browser printing. Photo editing uses the visual canvas and imported images. Social starts with a portrait canvas. Documents support text editing, import/export, and browser printing. Excel is an editable CSV-compatible grid with SUM/AVERAGE range formulas, up to 500 rows and 50 columns; XLSX import/export is not implemented. Website supports HTML/CSS editing, an isolated live preview, and HTML export; hosting is separate. The original imported files remain in Media when an edited project is created.
+
+Project options support opening, renaming, copying, exporting with assets, and deleting saved projects. Projects and files stay in this browser; account login does not provide cross-device storage synchronization.

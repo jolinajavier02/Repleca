@@ -1,3 +1,4 @@
+import { studioTypes } from "./studio-types";
 export type Scene = {
   id: string;
   name: string;
@@ -16,13 +17,19 @@ export type StudioProject = {
   opacity: number;
   ratio: string;
   scenes: Scene[];
-  media: { name: string; src: string; type: string } | null;
+  media: { name: string; src: string; type: string; assetId?: string } | null;
   script: string;
   updated: string;
+  cells?: string[][];
+  stylesheet?: string;
 };
 let projectOwner: string | null = null;
 export function setProjectOwner(id: string | null) {
   projectOwner = id;
+}
+export function accountStorageOwner() {
+  if (!projectOwner) throw new Error("Please log in to access your files.");
+  return projectOwner;
 }
 export function projectStorageKey() {
   if (!projectOwner) throw new Error("Please log in to access your projects.");
@@ -46,7 +53,15 @@ export function saveProject(project: StudioProject) {
   const projects = readProjects();
   localStorage.setItem(
     projectStorageKey(),
-    JSON.stringify([project, ...projects.filter((p) => p.id !== project.id)]),
+    JSON.stringify([
+      {
+        ...project,
+        media: project.media?.assetId
+          ? { ...project.media, src: "" }
+          : project.media,
+      },
+      ...projects.filter((p) => p.id !== project.id),
+    ]),
   );
 }
 export function createProject(mode: string): StudioProject {
@@ -121,7 +136,7 @@ export function startProject({
 }): StudioProject {
   if (!name.trim() || name.trim().length > 100)
     throw new Error("Give your project a name (1–100 characters).");
-  if (!["video", "image", "present", "podcast", "script"].includes(mode))
+  if (!studioTypes.some((type) => type.id === mode))
     throw new Error("Choose a project type.");
   if (!["16:9", "9:16", "1:1", "4:5"].includes(ratio))
     throw new Error("Choose a canvas format.");
@@ -129,7 +144,19 @@ export function startProject({
   project.name = name.trim();
   project.title = name.trim();
   project.subtitle = "";
-  project.script = "";
+  project.script =
+    mode === "website"
+      ? `<main class="page">
+  <p>YOUR NEXT GREAT THING</p>
+  <h1>Hello, world.</h1>
+  <p>Make this little corner of the internet yours.</p>
+</main>`
+      : "";
+  if (mode === "website")
+    project.stylesheet =
+      "body { margin: 0; background: #f5f2e8; color: #303b2c; font-family: system-ui, sans-serif; } .page { padding: 80px 40px; max-width: 760px; margin: auto; } h1 { font-size: 64px; letter-spacing: -3px; } p { line-height: 1.8; }";
+  if (mode === "excel")
+    project.cells = Array.from({ length: 20 }, () => Array(8).fill(""));
   project.ratio = ratio;
   project.scenes = [
     { ...project.scenes[0], name: mode === "present" ? "Slide 1" : "Scene 1" },
