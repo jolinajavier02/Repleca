@@ -18,12 +18,14 @@ import { useAuth } from "../lib/auth";
 export default function AuthPage({
   onAuthComplete,
   onBack,
+  initialMode = "login",
 }: {
   onAuthComplete: () => void;
   onBack: () => void;
+  initialMode?: "login" | "signup";
 }) {
   const { login, signup, error: serviceError } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode === "login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -231,12 +233,12 @@ export default function AuthPage({
                   name="password"
                   autoComplete={isLogin ? "current-password" : "new-password"}
                   placeholder={
-                    isLogin ? "Your password" : "At least 12 characters"
+                    isLogin ? "Your password" : "At least 6 characters"
                   }
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={isLogin ? undefined : 12}
+                  minLength={isLogin ? undefined : 6}
                   maxLength={128}
                   disabled={loading}
                 />
@@ -250,11 +252,7 @@ export default function AuthPage({
                   {visible ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
-              {!isLogin && (
-                <small>
-                  Use at least 12 characters. A few memorable words work well.
-                </small>
-              )}
+              {!isLogin && <small>Use at least 6 characters.</small>}
             </label>
             {!isLogin && (
               <label htmlFor="account-confirm">
@@ -308,7 +306,7 @@ export default function AuthPage({
             <span className="status-dot" />
             {isLogin
               ? "Your ideas have a place here."
-              : "After signing up, you’ll log in to open your editor."}
+              : "After signing up, log in to open your workspace."}
           </div>
         </div>
         <footer className="account-footer">

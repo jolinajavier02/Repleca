@@ -25,7 +25,7 @@ export default function App() {
 
 function AppRouter() {
   const { user, loading } = useAuth();
-  const [destination, setDestination] = useState("editor-video");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [view, setView] = useState(() =>
     window.location.hash.startsWith("#/")
       ? window.location.hash.slice(2)
@@ -42,8 +42,8 @@ function AppRouter() {
     return () => window.removeEventListener("hashchange", change);
   }, []);
   const navigate = (page: string) => {
-    if (page !== "landing" && page !== "auth" && !user) {
-      setDestination(page.startsWith("editor-") ? page : "editor-video");
+    if (!["landing", "home", "auth"].includes(page) && !user) {
+      setAuthMode("login");
       page = "auth";
     }
     window.location.hash = `/${page}`;
@@ -52,21 +52,41 @@ function AppRouter() {
   };
   const authPage = (
     <AuthPage
-      onBack={() => navigate("landing")}
+      initialMode={authMode}
+      onBack={() => navigate("home")}
       onAuthComplete={() => {
-        const page = view.startsWith("editor-") ? view : destination;
-        window.location.hash = `/${page}`;
-        setView(page);
+        window.location.hash = "/home";
+        setView("home");
         window.scrollTo(0, 0);
       }}
     />
   );
-  if (view === "landing") return <LandingPage onNavigate={navigate} />;
+  if (view === "landing")
+    return (
+      <LandingPage
+        onNavigate={(page) => {
+          if (page === "auth") setAuthMode("login");
+          navigate(page);
+        }}
+      />
+    );
   if (loading)
     return (
       <div className="studio-loading" role="status">
         <span className="orange-text">✳</span> Opening your creative space…
       </div>
+    );
+  if (view === "home")
+    return (
+      <Workspace
+        key={user?.id || "guest"}
+        view="home"
+        onNavigate={navigate}
+        onAuthRequested={(mode) => {
+          setAuthMode(mode);
+          navigate("auth");
+        }}
+      />
     );
   if (view === "auth" || !user) return authPage;
   if (view.startsWith("editor-"))
@@ -78,6 +98,6 @@ function AppRouter() {
       />
     );
   if (view === "onboarding")
-    return <OnboardingPage onComplete={() => navigate("editor-video")} />;
+    return <OnboardingPage onComplete={() => navigate("home")} />;
   return <Workspace key={user.id} view={view} onNavigate={navigate} />;
 }

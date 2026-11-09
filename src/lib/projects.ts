@@ -110,6 +110,33 @@ export function createProject(mode: string): StudioProject {
     updated: new Date().toISOString(),
   };
 }
+export function startProject({
+  name,
+  mode,
+  ratio,
+}: {
+  name: string;
+  mode: string;
+  ratio: string;
+}): StudioProject {
+  if (!name.trim() || name.trim().length > 100)
+    throw new Error("Give your project a name (1–100 characters).");
+  if (!["video", "image", "present", "podcast", "script"].includes(mode))
+    throw new Error("Choose a project type.");
+  if (!["16:9", "9:16", "1:1", "4:5"].includes(ratio))
+    throw new Error("Choose a canvas format.");
+  const project = createProject(mode);
+  project.name = name.trim();
+  project.title = name.trim();
+  project.subtitle = "";
+  project.script = "";
+  project.ratio = ratio;
+  project.scenes = [
+    { ...project.scenes[0], name: mode === "present" ? "Slide 1" : "Scene 1" },
+  ];
+  saveProject(project);
+  return project;
+}
 export function downloadFile(content: string, type: string, filename: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement("a");

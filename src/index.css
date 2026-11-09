@@ -4940,3 +4940,151 @@ textarea {
     font-size: 9px;
   }
 }
+
+.guest-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.guest-account-actions > span {
+  font-size: 9px;
+  color: #99a18e;
+}
+.guest-account-actions .text-button {
+  font-size: 11px;
+}
+.guest-account-actions .button {
+  font-size: 10px;
+  min-height: 33px;
+  padding: 8px 12px;
+}
+.guest-login-dialog .export-icon > span {
+  font-size: 32px;
+}
+.guest-login-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.guest-login-actions > .button {
+  flex: 1;
+  font-size: 11px;
+  gap: 10px;
+  min-height: 43px;
+  padding: 10px;
+}
+.guest-keep-browsing {
+  display: flex;
+  margin: 22px auto 0;
+  font-size: 10px;
+  color: #8b957d;
+  font-weight: 450;
+}
+.new-project-dialog {
+  max-width: 490px;
+}
+.new-project-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 550;
+  color: #6c785c;
+  margin-bottom: 20px;
+}
+.new-project-form > label > input,
+.new-project-form > label > select {
+  border: 1px solid #dce2d0;
+  border-radius: 5px;
+  background: #fffefa;
+  padding: 12px;
+  font-size: 12px;
+  color: #566548;
+  min-height: 44px;
+}
+.new-project-form > fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.new-project-form legend {
+  font-size: 11px;
+  font-weight: 550;
+  color: #6c785c;
+  margin-bottom: 11px;
+}
+.new-project-types {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+.new-project-types > button {
+  border: 1px solid #dfe5d4;
+  background: #f5f6ed;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 9px;
+  color: #8a967b;
+  padding: 14px 3px;
+}
+.new-project-types > button.active {
+  border-color: #d18764;
+  background: #fbefe5;
+  color: #be6b47;
+}
+.new-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+  margin-top: 26px;
+}
+.new-project-actions .button {
+  font-size: 11px;
+}
+.new-project-dialog .export-icon {
+  margin-bottom: 22px;
+}
+@media (max-width: 700px) {
+  .guest-account-actions {
+    gap: 11px;
+  }
+  .guest-account-actions > span {
+    display: none;
+  }
+  .guest-account-actions .text-button {
+    font-size: 9px;
+  }
+  .guest-account-actions .button {
+    font-size: 9px;
+    min-height: 30px;
+    padding: 7px 9px;
+  }
+  .guest-login-dialog .guest-login-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .new-project-types {
+    gap: 5px;
+  }
+  .new-project-types > button {
+    font-size: 8px;
+    padding: 12px 3px;
+  }
+  .new-project-types > button > svg {
+    width: 17px;
+  }
+  .new-project-dialog {
+    padding: 28px 23px;
+  }
+  .new-project-dialog > h2 {
+    font-size: 23px;
+  }
+}
+@media (max-width: 700px) {
+  .sidebar-scrim {
+    left: 230px;
+  }
+}

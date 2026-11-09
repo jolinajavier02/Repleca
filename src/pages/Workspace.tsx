@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Plus,
@@ -33,6 +33,8 @@ import AnalyticsDashboard from "./AnalyticsDashboard";
 import ExportCenter from "./ExportCenter";
 import SettingsPage from "./SettingsPage";
 import { readProjects, saveProject, projectStorageKey } from "../lib/projects";
+import NewProjectDialog from "../components/NewProjectDialog";
+import { useAuth } from "../lib/auth";
 import type { StudioProject } from "../lib/projects";
 
 const navItems = [
@@ -101,15 +103,30 @@ const templates = [
 export default function Workspace({
   view,
   onNavigate,
+  onAuthRequested,
 }: {
   view: string;
   onNavigate: (page: string) => void;
+  onAuthRequested?: (mode: "login" | "signup") => void;
 }) {
+  const { user } = useAuth();
+  const [loginPrompt, setLoginPrompt] = useState(false);
+  const loginDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = loginDialog.current;
+    if (loginPrompt) el?.showModal();
+    else el?.close();
+  }, [loginPrompt]);
+  const requestAuth = (mode: "login" | "signup") => {
+    setLoginPrompt(false);
+    if (onAuthRequested) onAuthRequested(mode);
+    else onNavigate("auth");
+  };
   const [projects, setProjects] = useState(readProjects);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [list, setList] = useState(false);
-  const [newOpen, setNewOpen] = useState(false);
+  const [newMode, setNewMode] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -190,13 +207,31 @@ export default function Workspace({
         p.mode === studioTypes.find((s) => s.label === filter)?.id),
   );
   return (
-    <div className="workspace-shell">
+    <div
+      className="workspace-shell"
+      onClickCapture={(event) => {
+        if (user || !(event.target instanceof Element)) return;
+        if (event.target.closest("[data-guest-allowed]")) return;
+        if (event.target.closest("button, a")) {
+          event.preventDefault();
+          event.stopPropagation();
+          setLoginPrompt(true);
+        }
+      }}
+    >
       <aside className={`workspace-sidebar ${mobileMenu ? "is-open" : ""}`}>
-        <Brand onClick={() => navigate("landing")} />
+        <div data-guest-allowed>
+          <Brand onClick={() => navigate("landing")} />
+        </div>
         <button className="workspace-switcher" onClick={() => navigate("home")}>
-          <span className="workspace-avatar">Y</span>
+          <span className="workspace-avatar">
+            {user?.name.charAt(0).toUpperCase() || "G"}
+          </span>
           <span>
-            Your creative space<small>Personal workspace</small>
+            {user
+              ? `${user.name.split(" ")[0]}’s creative space`
+              : "Your creative space"}
+            <small>{user ? "Personal workspace" : "Guest workspace"}</small>
           </span>
           <ChevronDown size={15} />
         </button>
@@ -237,15 +272,13 @@ export default function Workspace({
           <span>✳</span>
           <h3>Big ideas live here.</h3>
           <p>Try something new. Make a little mess. Find your flow.</p>
-          <button
-            className="text-button"
-            onClick={() => navigate("editor-video")}
-          >
+          <button className="text-button" onClick={() => setNewMode("video")}>
             Start creating <ArrowUpRight size={15} />
           </button>
         </div>
         <button
           className="back-website text-button"
+          data-guest-allowed
           onClick={() => navigate("landing")}
         >
           <ArrowLeft size={16} /> Back to the website
@@ -254,6 +287,7 @@ export default function Workspace({
       {mobileMenu && (
         <button
           className="sidebar-scrim"
+          data-guest-allowed
           aria-label="Close navigation"
           onClick={() => setMobileMenu(false)}
         />
@@ -263,6 +297,7 @@ export default function Workspace({
           <div>
             <button
               className="icon-button workspace-menu"
+              data-guest-allowed
               onClick={() => setMobileMenu(!mobileMenu)}
               aria-label="Open navigation"
             >
@@ -273,10 +308,30 @@ export default function Workspace({
             <b>{title}</b>
           </div>
           <div>
-            <span className="device-label">
-              <span className="status-dot" /> Saved on this device
-            </span>
-            <AccountMenu onNavigate={onNavigate} />
+            {user ? (
+              <>
+                <span className="device-label">
+                  <span className="status-dot" /> Saved on this device
+                </span>
+                <AccountMenu onNavigate={onNavigate} />
+              </>
+            ) : (
+              <div className="guest-account-actions" data-guest-allowed>
+                <span>Just looking around?</span>
+                <button
+                  className="text-button"
+                  onClick={() => requestAuth("login")}
+                >
+                  Log in
+                </button>
+                <button
+                  className="button button-orange small"
+                  onClick={() => requestAuth("signup")}
+                >
+                  Sign up <ArrowUpRight size={13} />
+                </button>
+              </div>
+            )}
           </div>
         </header>
         {["home", "projects", "templates"].includes(view) ? (
@@ -292,7 +347,9 @@ export default function Workspace({
                 </div>
                 <h1>
                   {view === "home"
-                    ? "Hello, creative human."
+                    ? user
+                      ? `Hello, ${user.name.split(" ")[0]}.`
+                      : "Hello, creative human."
                     : view === "templates"
                       ? "A little inspiration."
                       : "Made by you."}
@@ -309,24 +366,10 @@ export default function Workspace({
               <div className="new-project-wrap">
                 <button
                   className="button button-orange"
-                  aria-expanded={newOpen}
-                  onClick={() => setNewOpen(!newOpen)}
+                  onClick={() => setNewMode("video")}
                 >
-                  <Plus size={18} />
-                  New project
-                  <ChevronDown size={14} />
+                  <Plus size={18} /> New project <ChevronDown size={14} />
                 </button>
-                {newOpen && (
-                  <div className="new-project-menu">
-                    {studioTypes.map(({ id, label, icon: Icon }) => (
-                      <button key={id} onClick={() => navigate(`editor-${id}`)}>
-                        <Icon size={17} />
-                        {label} studio
-                        <ArrowUpRight size={15} />
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
             {view === "home" && (
@@ -340,7 +383,7 @@ export default function Workspace({
                     <p>Your ideas deserve more than a notes app.</p>
                     <button
                       className="button button-dark small"
-                      onClick={() => navigate("editor-video")}
+                      onClick={() => setNewMode("video")}
                     >
                       Find your flow
                       <ArrowUpRight size={16} />
@@ -357,7 +400,7 @@ export default function Workspace({
                 </div>
                 <div className="create-types">
                   {studioTypes.map(({ id, label, desc, icon: Icon, color }) => (
-                    <button key={id} onClick={() => navigate(`editor-${id}`)}>
+                    <button key={id} onClick={() => setNewMode(id)}>
                       <span className={`create-icon ${color}`}>
                         <Icon size={22} />
                       </span>
@@ -559,7 +602,7 @@ export default function Workspace({
                 </p>
                 <button
                   className="button button-outline small"
-                  onClick={() => navigate("editor-video")}
+                  onClick={() => setNewMode("video")}
                 >
                   Make something new
                   <Plus size={16} />
@@ -581,6 +624,64 @@ export default function Workspace({
           <span>Made for your creative flow. ✳</span>
         </footer>
       </main>
+      {newMode && (
+        <NewProjectDialog
+          initialMode={newMode}
+          onClose={() => setNewMode(null)}
+          onCreated={(project) => {
+            setProjects(readProjects());
+            setNewMode(null);
+            navigate(`editor-${project.mode}?id=${project.id}`);
+          }}
+        />
+      )}
+      <dialog
+        ref={loginDialog}
+        data-guest-allowed
+        className="export-dialog guest-login-dialog"
+        aria-labelledby="guest-login-title"
+        onCancel={() => setLoginPrompt(false)}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setLoginPrompt(false);
+        }}
+      >
+        <button
+          className="icon-button dialog-close"
+          aria-label="Close login reminder"
+          onClick={() => setLoginPrompt(false)}
+        >
+          <X size={19} />
+        </button>
+        <div className="export-icon">
+          <span className="orange-text">✳</span>
+        </div>
+        <div className="eyebrow">YOUR IDEAS DESERVE A PLACE.</div>
+        <h2 id="guest-login-title">Log in to make it yours.</h2>
+        <p>
+          Create projects, try the tools, and save your work with your own
+          account.
+        </p>
+        <div className="guest-login-actions">
+          <button
+            className="button button-orange"
+            onClick={() => requestAuth("login")}
+          >
+            Log in <ArrowUpRight size={16} />
+          </button>
+          <button
+            className="button button-outline"
+            onClick={() => requestAuth("signup")}
+          >
+            Create an account <Plus size={16} />
+          </button>
+        </div>
+        <button
+          className="text-button guest-keep-browsing"
+          onClick={() => setLoginPrompt(false)}
+        >
+          Keep looking around
+        </button>
+      </dialog>
       {notice && (
         <div className="toast" role="status">
           {notice}

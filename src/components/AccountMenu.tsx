@@ -18,7 +18,7 @@ export default function AccountMenu({
     setError("");
     try {
       await logout();
-      onNavigate("auth");
+      onNavigate("home");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Could not log out. Try again.",

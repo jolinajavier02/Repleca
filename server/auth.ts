@@ -160,9 +160,9 @@ export async function handleAuth(
       const name = typeof body.name === "string" ? body.name.trim() : "";
       if (name.length < 2 || name.length > 80)
         return json({ error: "Enter your name (2–80 characters)." }, 400);
-      if (password.length < 12)
+      if (password.length < 6)
         return json(
-          { error: "Choose a password with at least 12 characters." },
+          { error: "Choose a password with at least 6 characters." },
           400,
         );
       if (body.confirmPassword !== password)

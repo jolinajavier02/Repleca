@@ -9,7 +9,7 @@ import { handleAuth } from "../server/auth.ts";
 import { openLocalAuth } from "../server/local-auth.ts";
 
 const origin = "http://localhost:3000";
-const password = "A memorable creative password!";
+const password = "Art!26"; // Exactly six characters: exercise the signup boundary.
 const account = {
   name: "Creative Tester",
   email: "Creator@Example.test",

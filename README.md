@@ -29,7 +29,9 @@ Artwork downloads as SVG and scripts as plain text. Video/audio rendering is not
 
 ## Accounts
 
-All workspace and editor routes require login. Creating an account returns to the login form with the email prefilled; signup does not create a session. A successful email/password login opens the requested editor (video by default).
+Open Studio opens a public workspace preview. Visitors can browse the screen; workspace action buttons show a reminder to log in or create an account. Editor and private workspace routes still require authentication. Creating an account returns to the login form with the email prefilled; signup does not create a session. A successful email/password login always opens the signed-in workspace. Passwords require at least 6 characters on both the signup form and server.
+
+New Project opens a setup dialog for the project name, type, and canvas format. Creating it immediately saves the project to the signed-in account’s local list and opens its editor using the saved ID. Cancel leaves the list unchanged. The creation shortcuts use the same flow. Logout returns to the guest workspace.
 
 In `npm run dev` and `npm run preview`, the Vite server runs the account API with a persistent SQLite database at `.repleca/auth.sqlite`. This directory is ignored by Git and blocked from browser asset requests. Passwords are stored as salted scrypt hashes. Sessions use opaque HttpOnly, SameSite cookies, with Secure enabled on HTTPS; session tokens are stored hashed on the server. Signup and login enforce server-side validation and rate limits. Logout revokes the session, and saved projects are scoped by account ID. The original unassigned `repleca-projects` browser data is retained but isn't automatically assigned to a new account.
 
@@ -50,4 +52,4 @@ npm run test:auth
 
 Desktop and mobile browser checks cover studio navigation, templates, uploads, text properties, undo/redo, splitting, playback, local save/reopen, project import/export, SVG export, and mobile drawers.
 
-Account tests cover signup validation, duplicate emails, password verification, cookie sessions, session rotation/expiry, logout, CSRF rejection, throttling, and persistence. Browser verification covers signup → login → editor, protected deep links, incorrect passwords, mobile forms, account-specific project lists, and distinct display artwork.
+Account tests cover signup validation, duplicate emails, password verification, cookie sessions, session rotation/expiry, logout, CSRF rejection, throttling, and persistence. Browser verification covers guest workspace actions and login reminders, signup → login → workspace, project creation and reopening, protected deep links, incorrect passwords, mobile forms, account-specific project lists, and distinct display artwork.
