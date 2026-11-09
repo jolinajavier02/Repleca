@@ -5,7 +5,6 @@ import {
   Settings,
   Share2,
   TrendingUp,
-  PlusSquare,
   Home,
   Briefcase,
   PlayCircle,

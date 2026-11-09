@@ -1,4 +1,5 @@
 import React from 'react';
+import Brand from '../components/Brand';
 import { 
   Palette, Image as ImageIcon, Type, 
   Plus, Check, Briefcase
@@ -22,7 +23,7 @@ const BrandKit: React.FC = () => {
          <aside className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
             <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>ACTIVE KITS</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(0,255,255,0.05)', borderRadius: '10px', border: '1px solid var(--accent-cyan)' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f4ebe1', borderRadius: '10px', border: '1px solid var(--accent-cyan)' }}>
                   <Briefcase size={20} color="var(--accent-cyan)" />
                   <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Main Corporate</span>
                   <Check size={16} color="var(--accent-cyan)" style={{ marginLeft: 'auto' }} />
@@ -47,13 +48,13 @@ const BrandKit: React.FC = () => {
                </div>
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
                   {[
-                    { label: 'Primary White', bg: '#111' },
-                    { label: 'Primary Black', bg: '#eee' },
-                    { label: 'Icon Mark', bg: '#111' }
+                    { label: 'Primary Logo', bg: '#eef0e4' },
+                    { label: 'Alternate Logo', bg: '#e6dff0' },
+                    { label: 'Icon Mark', bg: '#f3dfd1' }
                   ].map((logo, i) => (
                     <div key={i} style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '1rem', background: 'var(--bg-accent)' }}>
                        <div style={{ height: '100px', background: logo.bg, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                          <span style={{ fontSize: '0.6rem', color: logo.bg === '#eee' ? '#000' : '#fff' }}>[LOGO PREVIEW]</span>
+                          <Brand compact={i === 2} />
                        </div>
                        <div style={{ fontSize: '0.75rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{logo.label}</div>
                     </div>
@@ -69,10 +70,10 @@ const BrandKit: React.FC = () => {
                </div>
                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
                   {[
-                    { hex: '#0D0D0D', label: 'Ebony' },
-                    { hex: '#8A2BE2', label: 'Violet' },
-                    { hex: '#00FFFF', label: 'Cyan' },
-                    { hex: '#FFFFFF', label: 'White' }
+                    { hex: '#292B26', label: 'Ink' },
+                    { hex: '#E8643E', label: 'Terracotta' },
+                    { hex: '#859883', label: 'Sage' },
+                    { hex: '#FAF9F5', label: 'Paper' }
                   ].map((color, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                        <div style={{ width: '54px', height: '54px', background: color.hex, borderRadius: '12px', border: '2px solid rgba(255,255,255,0.1)' }} />
@@ -98,14 +99,14 @@ const BrandKit: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
                      <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>HEADING</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Outfit - ExtraBold</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-heading)' }}>Manrope — Bold</div>
                      </div>
                      <button style={{ color: 'var(--accent-cyan)', background: 'transparent', border: 'none' }}>Change</button>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                      <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>BODY</div>
-                        <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-body)' }}>Inter - Regular</div>
+                        <div style={{ fontSize: '1.2rem', fontFamily: 'var(--font-body)' }}>DM Sans — Regular</div>
                      </div>
                      <button style={{ color: 'var(--accent-cyan)', background: 'transparent', border: 'none' }}>Change</button>
                   </div>

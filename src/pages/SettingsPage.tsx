@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Settings as SettingsIcon, User, Briefcase, 
   CreditCard, Bell, Shield, 
-  Database, Globe, Moon, Sun, 
+  Database, Globe, Sun,
   Trash2, LogOut
 } from 'lucide-react';
 
@@ -27,7 +27,7 @@ const SettingsPage: React.FC = () => {
               { label: 'Integrations', icon: <Globe size={18} /> },
               { label: 'Storage', icon: <Database size={18} /> }
             ].map((item, i) => (
-              <button key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: item.active ? 'rgba(0,255,255,0.05)' : 'transparent', border: 'none', color: item.active ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontWeight: item.active ? 800 : 500, textAlign: 'left', cursor: 'pointer' }}>
+              <button key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: item.active ? '#f4ebe1' : 'transparent', border: 'none', color: item.active ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontWeight: item.active ? 800 : 500, textAlign: 'left', cursor: 'pointer' }}>
                  {item.icon}
                  <span style={{ fontSize: '0.9rem' }}>{item.label}</span>
               </button>
@@ -50,8 +50,7 @@ const SettingsPage: React.FC = () => {
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Choose your studio theme</div>
                      </div>
                      <div style={{ display: 'flex', background: 'var(--bg-accent)', borderRadius: '10px', padding: '4px', border: '1px solid var(--border)' }}>
-                        <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '6px', display: 'flex', gap: '8px' }}><Moon size={16} /> Dark</button>
-                        <button style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '8px 12px', borderRadius: '6px' }}><Sun size={16} /></button>
+                        <button style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '6px', display: 'flex', gap: '8px' }}><Sun size={16} /> Light</button>
                      </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

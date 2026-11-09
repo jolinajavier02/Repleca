@@ -1,73 +1,35 @@
-# React + TypeScript + Vite
+# Repleca Studio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A flat, illustrated creative workspace built with React, TypeScript, and Vite. The design uses warm paper surfaces, terracotta accents, sage and lavender palettes, and original SVG artwork.
 
-Currently, two official plugins are available:
+## Local preview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+npm install
+npm run dev -- --host 127.0.0.1 --port 3000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open http://localhost:3000/Repleca/. The configured base path is `/Repleca/`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Screens
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Landing page with studio tabs, workflow, and template previews.
+- Workspace with searchable projects, templates, grid/list views, and project import.
+- Shared video, design, slide, audio, and script editing layouts.
+- Existing media library, brand kit, analytics, export, account, and settings screens with the updated visual theme.
+
+The editor supports scene selection, splitting and duplication, editable text, color palettes, scale/opacity, aspect ratios, media uploads, playback preview, and undo/redo. On mobile, tool and property panels open as drawers.
+
+## Project storage and export
+
+Projects save to this browser's local storage when Save is clicked or the editor's back button is used. Download a `.repleca.json` project file to back it up or import it on another browser. Local media uploads support images, video, and audio up to 3 MB; available browser storage limits the total saved media.
+
+Artwork downloads as SVG and scripts as plain text. Video/audio rendering and server authentication are not implemented by this redesign. The existing Cloudflare API files are retained; the new local workspace doesn't depend on them.
+
+## Validation
+
+```sh
+npm run build
 ```
+
+Desktop and mobile browser checks cover studio navigation, templates, uploads, text properties, undo/redo, splitting, playback, local save/reopen, project import/export, SVG export, and mobile drawers.
