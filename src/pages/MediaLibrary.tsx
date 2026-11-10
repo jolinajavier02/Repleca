@@ -216,7 +216,7 @@ export default function MediaLibrary({
     }
   };
   const editable = (asset: MediaAsset) =>
-    /^(image|video|audio)\//.test(asset.type) ||
+    /^(image|video)\//.test(asset.type) ||
     /^text\//.test(asset.type) ||
     /\.(csv|html?|txt|md|json)$/i.test(asset.name);
   const editFile = async (asset: MediaAsset) => {

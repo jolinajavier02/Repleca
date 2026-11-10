@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { FileQuestion } from "lucide-react";
+import TemplateArtwork from "./TemplateArtwork";
+import { projectSize } from "../lib/formats";
 import StudioArtwork from "./StudioArtwork";
 import MediaThumbnail from "./MediaThumbnail";
 import { getMedia } from "../lib/media";
@@ -70,5 +72,15 @@ export default function ProjectThumbnail({
           "<main>\n  Your next big idea.\n</main>"}
       </div>
     );
+  if (project.templateStyle) {
+    const [w, h] = projectSize(project);
+    return (
+      <TemplateArtwork
+        style={project.templateStyle}
+        variant={project.scenes[0]?.variant || 0}
+        aspect={w / h}
+      />
+    );
+  }
   return <StudioArtwork variant={project.scenes[0]?.variant || 0} />;
 }

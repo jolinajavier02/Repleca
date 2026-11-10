@@ -33,6 +33,11 @@ import {
 } from "lucide-react";
 import Brand from "../components/Brand";
 import AccountMenu from "../components/AccountMenu";
+import TemplateArtwork from "../components/TemplateArtwork";
+import TemplateBrowser from "../components/TemplateBrowser";
+import FormatSelect from "../components/FormatSelect";
+import { canvasFormats, formatFields, projectSize } from "../lib/formats";
+import { templateState } from "../lib/template-state";
 import MediaThumbnail from "../components/MediaThumbnail";
 import {
   addMedia,
@@ -42,7 +47,6 @@ import {
   portableProject,
 } from "../lib/media";
 import type { MediaAsset } from "../lib/media";
-import StudioArtwork from "../components/StudioArtwork";
 import {
   createProject,
   downloadFile,
@@ -98,6 +102,17 @@ export default function StudioEditor({
     }
     return fresh;
   });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() =>
+      setStageSize({ width: el.clientWidth, height: el.clientHeight }),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const [missingMedia, setMissingMedia] = useState(false);
   const [library, setLibrary] = useState<MediaAsset[]>([]);
   const [past, setPast] = useState<StudioProject[]>([]);
@@ -122,9 +137,40 @@ export default function StudioEditor({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const activeScene =
     project.scenes[Math.min(selected, project.scenes.length - 1)];
+  const activeTitle = activeScene.title ?? project.title;
+  const activeSubtitle = activeScene.subtitle ?? project.subtitle;
+  const [canvasWidth, canvasHeight] = projectSize(project);
+  const fittedWidth = Math.max(
+    80,
+    Math.min(
+      ((stageSize.width - 48) * zoom) / 100,
+      ((stageSize.height - 55) * canvasWidth) / canvasHeight,
+    ),
+  );
   const duration = project.scenes.reduce((sum, s) => sum + s.duration, 0);
   const timed = mode === "video" || mode === "podcast";
   const edit = (changes: Partial<StudioProject>) => {
+    if (
+      !changes.scenes &&
+      (changes.title !== undefined || changes.subtitle !== undefined) &&
+      activeScene.title !== undefined
+    ) {
+      changes.scenes = project.scenes.map((scene, i) =>
+        i === selected
+          ? {
+              ...scene,
+              ...(changes.title !== undefined ? { title: changes.title } : {}),
+              ...(changes.subtitle !== undefined
+                ? { subtitle: changes.subtitle }
+                : {}),
+            }
+          : scene,
+      );
+      if (selected !== 0) {
+        changes.title = project.title;
+        changes.subtitle = project.subtitle;
+      }
+    }
     setPast((p) => [...p.slice(-39), project]);
     setFuture([]);
     setProject((p) => ({
@@ -354,13 +400,7 @@ export default function StudioEditor({
     edit({ scenes });
   };
   const exportArtwork = async () => {
-    const dims: Record<string, [number, number]> = {
-      "16:9": [1920, 1080],
-      "9:16": [1080, 1920],
-      "1:1": [1080, 1080],
-      "4:5": [1080, 1350],
-    };
-    const [w, h] = dims[project.ratio];
+    const [w, h] = projectSize(project);
     const xml = (str: string) =>
       str.replace(
         /[<>&"']/g,
@@ -387,7 +427,11 @@ export default function StudioEditor({
     const artwork = project.media?.type.startsWith("image/")
       ? `<image href="${xml(imageSource)}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
       : renderToStaticMarkup(
-          <StudioArtwork variant={activeScene.variant} />,
+          <TemplateArtwork
+            style={project.templateStyle}
+            variant={activeScene.variant}
+            aspect={w / h}
+          />,
         ).replace("<svg", `<svg width="${w}" height="${h}"`);
     const canvas = canvasRef.current!;
     const bounds = canvas.getBoundingClientRect();
@@ -399,7 +443,8 @@ export default function StudioEditor({
       const fontSize = parseFloat(style.fontSize);
       const spacing = parseFloat(style.letterSpacing) || 0;
       const ctx = document.createElement("canvas").getContext("2d")!;
-      ctx.font = `${weight} ${fontSize}px Manrope, Arial, sans-serif`;
+      const actualWeight = style.fontWeight || String(weight);
+      ctx.font = `${actualWeight} ${fontSize}px ${style.fontFamily}`;
       const lines: string[] = [];
       let line = "";
       for (const char of content) {
@@ -417,17 +462,18 @@ export default function StudioEditor({
       return lines
         .map(
           (value, i) =>
-            `<text x="${w / 2}" y="${(rect.top - bounds.top + fontSize * 0.82 + i * (parseFloat(style.lineHeight) || fontSize * 1.2)) * factor}" text-anchor="middle" font-family="Manrope,Arial,sans-serif" font-weight="${weight}" font-size="${fontSize * factor}" letter-spacing="${spacing * factor}" fill="${project.color}">${xml(value)}</text>`,
+            `<text x="${(rect.left - bounds.left + rect.width / 2) * factor}" y="${(rect.top - bounds.top + fontSize * 0.82 + i * (parseFloat(style.lineHeight) || fontSize * 1.2)) * factor}" text-anchor="middle" font-family="${xml(style.fontFamily)}" font-weight="${actualWeight}" font-size="${fontSize * factor}" letter-spacing="${spacing * factor}" fill="${project.color}">${xml(value)}</text>`,
         )
         .join("");
     };
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><clipPath id="canvas"><rect width="${w}" height="${h}"/></clipPath></defs><g clip-path="url(#canvas)"><g transform="translate(${w / 2} ${h / 2}) scale(${project.scale / 100}) translate(${-w / 2} ${-h / 2})" opacity="${project.opacity / 100}">${artwork}</g>${textSvg(".canvas-text > span", project.title, 750)}${textSvg(".canvas-text > small", project.subtitle, 500)}</g></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs><clipPath id="canvas"><rect width="${w}" height="${h}"/></clipPath></defs><g clip-path="url(#canvas)"><rect width="${w}" height="${h}" fill="#fffdf7"/><g transform="translate(${w / 2} ${h / 2}) scale(${project.scale / 100}) translate(${-w / 2} ${-h / 2})" opacity="${project.opacity / 100}"><svg x="${(w * (project.photoInset || 0)) / 100}" y="${(h * (project.photoInset || 0)) / 100}" width="${w * (1 - (2 * (project.photoInset || 0)) / 100)}" height="${h * (1 - (2 * (project.photoInset || 0)) / 100)}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice">${artwork}</svg></g>${textSvg(".canvas-text > span", activeTitle, 750)}${textSvg(".canvas-text > small", activeSubtitle, 500)}</g></svg>`;
     downloadFile(svg, "image/svg+xml", `${project.name}.svg`);
     setExportOpen(false);
     setNotice("Your artwork has been downloaded.");
   };
   return (
     <div className="editor-shell">
+      <style media="print">{`@page { size: ${canvasFormats.find((format) => format.id === project.formatId)?.paper || "A4"}; margin: 0; }`}</style>
       <header className="editor-header">
         <div className="editor-header-left">
           <button
@@ -616,7 +662,11 @@ export default function StudioEditor({
                         onClick={() => pickScene(i)}
                       >
                         <div>
-                          <StudioArtwork variant={scene.variant} />
+                          <TemplateArtwork
+                            style={project.templateStyle}
+                            variant={scene.variant}
+                            aspect={canvasWidth / canvasHeight}
+                          />
                           <span className="media-duration">
                             {clock(scene.duration)}
                           </span>
@@ -713,14 +763,14 @@ export default function StudioEditor({
               <label className="field-label">
                 Heading
                 <textarea
-                  value={project.title}
+                  value={activeTitle}
                   onChange={(e) => edit({ title: e.target.value })}
                 />
               </label>
               <label className="field-label">
                 Subtitle
                 <textarea
-                  value={project.subtitle}
+                  value={activeSubtitle}
                   onChange={(e) => edit({ subtitle: e.target.value })}
                 />
               </label>
@@ -745,7 +795,11 @@ export default function StudioEditor({
                       })
                     }
                   >
-                    <StudioArtwork variant={i} />
+                    <TemplateArtwork
+                      style={project.templateStyle}
+                      variant={i}
+                      aspect={canvasWidth / canvasHeight}
+                    />
                     <span>{name}</span>
                     <ArrowUpRight size={16} />
                   </button>
@@ -796,41 +850,23 @@ export default function StudioEditor({
             </>
           )}
           {panel === "templates" && (
-            <>
-              <p className="panel-description">
-                A starting point, with room for you.
-              </p>
-              {[
-                "The slow edit",
-                "A fresh perspective",
-                "Ideas worth sharing",
-              ].map((name, i) => (
-                <button
-                  className="editor-template"
-                  key={name}
-                  onClick={() =>
-                    edit({
-                      title: [
-                        "SLOW DAYS.",
-                        "a fresh perspective.",
-                        "Ideas worth sharing.",
-                      ][i],
-                      subtitle: "MAKE SOMETHING THAT FEELS LIKE YOU.",
-                      media: null,
-                      scenes: project.scenes.map((s, n) =>
-                        n === selected ? { ...s, variant: i } : s,
-                      ),
-                    })
-                  }
-                >
-                  <StudioArtwork variant={i} />
-                  <span>
-                    {name}
-                    <ArrowUpRight size={15} />
-                  </span>
-                </button>
-              ))}
-            </>
+            <TemplateBrowser
+              mode={mode}
+              compact
+              onChoose={(template) => {
+                const changes = templateState(template.id, mode);
+                edit({
+                  ...changes,
+                  media: mode === "photo" ? project.media : null,
+                });
+                setSelected(0);
+                setTime(0);
+                setPlaying(false);
+                setNotice(
+                  `${template.name} applied. Use Undo to restore the previous layout.`,
+                );
+              }}
+            />
           )}
           <div className="asset-panel-bottom">
             <span className="status-dot" /> A little space for big ideas.
@@ -843,15 +879,13 @@ export default function StudioEditor({
               {mode === "script" ? "Writing room" : "Your canvas"}
             </span>
             <div>
-              <select
-                aria-label="Canvas aspect ratio"
-                value={project.ratio}
-                onChange={(e) => edit({ ratio: e.target.value })}
-              >
-                {["16:9", "9:16", "1:1", "4:5"].map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
+              <FormatSelect
+                mode={mode}
+                value={project.formatId}
+                ratio={project.ratio}
+                label={mode === "video" ? "Video frame size" : "Canvas format"}
+                onChange={(id) => edit(formatFields(id))}
+              />
               <button
                 className="icon-button"
                 aria-label="Show canvas properties"
@@ -863,6 +897,7 @@ export default function StudioEditor({
           </div>
           <div
             className="canvas-stage"
+            ref={stageRef}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -874,7 +909,7 @@ export default function StudioEditor({
                 <span className="eyebrow">YOUR STORY STARTS HERE</span>
                 <input
                   aria-label="Script title"
-                  value={project.title}
+                  value={activeTitle}
                   onChange={(e) => edit({ title: e.target.value })}
                 />
                 <textarea
@@ -891,11 +926,13 @@ export default function StudioEditor({
               </div>
             ) : (
               <div
-                className={`editing-canvas ratio-${project.ratio.replace(":", "-")}`}
+                className={`editing-canvas layout-${project.templateStyle || "default"} ratio-${project.ratio.replace(":", "-")}`}
                 ref={canvasRef}
                 style={{
                   aspectRatio: project.ratio.replace(":", "/"),
-                  width: `${zoom}%`,
+                  width: `${fittedWidth}px`,
+                  maxWidth: "100%",
+                  maxHeight: "none",
                 }}
               >
                 <div
@@ -903,6 +940,7 @@ export default function StudioEditor({
                   style={{
                     transform: `scale(${project.scale / 100})`,
                     opacity: project.opacity / 100,
+                    inset: `${project.photoInset || 0}%`,
                   }}
                 >
                   {project.media?.assetId && !project.media.src ? (
@@ -921,7 +959,11 @@ export default function StudioEditor({
                       playsInline
                     />
                   ) : (
-                    <StudioArtwork variant={activeScene.variant} />
+                    <TemplateArtwork
+                      style={project.templateStyle}
+                      variant={activeScene.variant}
+                      aspect={canvasWidth / canvasHeight}
+                    />
                   )}
                 </div>
                 <button
@@ -938,9 +980,9 @@ export default function StudioEditor({
                       fontSize: `${project.fontSize / 7}cqw`,
                     }}
                   >
-                    {project.title}
+                    {activeTitle}
                   </span>
-                  <small>{project.subtitle}</small>
+                  <small>{activeSubtitle}</small>
                   {panel === "text" && (
                     <>
                       <i className="handle tl" />
@@ -965,7 +1007,7 @@ export default function StudioEditor({
             <span>
               {mode === "script"
                 ? "Draft"
-                : `${project.ratio === "16:9" ? "1920 × 1080" : project.ratio === "9:16" ? "1080 × 1920" : project.ratio === "4:5" ? "1080 × 1350" : "1080 × 1080"} px`}
+                : `${canvasWidth} × ${canvasHeight} px`}
             </span>
             {timed && (
               <div className="playback-controls">
@@ -1076,14 +1118,13 @@ export default function StudioEditor({
                 <div className="property-grid">
                   <label className="field-label">
                     Format
-                    <select
-                      value={project.ratio}
-                      onChange={(e) => edit({ ratio: e.target.value })}
-                    >
-                      {["16:9", "9:16", "1:1", "4:5"].map((r) => (
-                        <option key={r}>{r}</option>
-                      ))}
-                    </select>
+                    <FormatSelect
+                      mode={mode}
+                      value={project.formatId}
+                      ratio={project.ratio}
+                      label="Scene format"
+                      onChange={(id) => edit(formatFields(id))}
+                    />
                   </label>
                   <label className="field-label">
                     Duration (s)
@@ -1151,7 +1192,7 @@ export default function StudioEditor({
                 <label className="field-label">
                   Heading
                   <input
-                    value={project.title}
+                    value={activeTitle}
                     onChange={(e) => edit({ title: e.target.value })}
                   />
                 </label>
@@ -1215,7 +1256,11 @@ export default function StudioEditor({
                         })
                       }
                     >
-                      <StudioArtwork variant={i} />
+                      <TemplateArtwork
+                        style={project.templateStyle}
+                        variant={i}
+                        aspect={canvasWidth / canvasHeight}
+                      />
                     </button>
                   ))}
                 </div>
@@ -1389,7 +1434,11 @@ export default function StudioEditor({
                   style={{ flexGrow: s.duration }}
                   onClick={() => pickScene(i)}
                 >
-                  <StudioArtwork variant={s.variant} />
+                  <TemplateArtwork
+                    style={project.templateStyle}
+                    variant={s.variant}
+                    aspect={canvasWidth / canvasHeight}
+                  />
                   <div>
                     <span>{String(i + 1).padStart(2, "0")}</span>
                     {s.name}

@@ -1,9 +1,13 @@
 import { studioTypes } from "./studio-types";
+import { defaultFormat, formatFields, validRatio } from "./formats";
+import { templateState } from "./template-state";
 export type Scene = {
   id: string;
   name: string;
   variant: number;
   duration: number;
+  title?: string;
+  subtitle?: string;
 };
 export type StudioProject = {
   id: string;
@@ -22,6 +26,13 @@ export type StudioProject = {
   updated: string;
   cells?: string[][];
   stylesheet?: string;
+  formatId?: string;
+  width?: number;
+  height?: number;
+  templateId?: string;
+  templateStyle?: string;
+  templateNote?: string;
+  photoInset?: number;
 };
 let projectOwner: string | null = null;
 export function setProjectOwner(id: string | null) {
@@ -68,6 +79,7 @@ export function createProject(mode: string): StudioProject {
   return {
     id: crypto.randomUUID(),
     mode,
+    ...(defaultFormat(mode) ? formatFields(defaultFormat(mode).id) : {}),
     name:
       mode === "image"
         ? "A fresh perspective"
@@ -89,7 +101,7 @@ export function createProject(mode: string): StudioProject {
     fontSize: 54,
     scale: 100,
     opacity: 100,
-    ratio: mode === "image" ? "1:1" : "16:9",
+    ratio: defaultFormat(mode)?.ratio || (mode === "image" ? "1:1" : "16:9"),
     scenes: [
       {
         id: crypto.randomUUID(),
@@ -129,17 +141,20 @@ export function startProject({
   name,
   mode,
   ratio,
+  formatId,
+  templateId,
 }: {
   name: string;
   mode: string;
   ratio: string;
+  formatId?: string;
+  templateId?: string;
 }): StudioProject {
   if (!name.trim() || name.trim().length > 100)
     throw new Error("Give your project a name (1–100 characters).");
   if (!studioTypes.some((type) => type.id === mode))
     throw new Error("Choose a project type.");
-  if (!["16:9", "9:16", "1:1", "4:5"].includes(ratio))
-    throw new Error("Choose a canvas format.");
+  if (!validRatio(ratio)) throw new Error("Choose a canvas format.");
   const project = createProject(mode);
   project.name = name.trim();
   project.title = name.trim();
@@ -161,6 +176,17 @@ export function startProject({
   project.scenes = [
     { ...project.scenes[0], name: mode === "present" ? "Slide 1" : "Scene 1" },
   ];
+  if (templateId) Object.assign(project, templateState(templateId, mode));
+  if (formatId) Object.assign(project, formatFields(formatId));
+  else if (!templateId) {
+    project.ratio = ratio;
+    if (project.ratio !== defaultFormat(mode)?.ratio) {
+      project.formatId = undefined;
+      project.width = undefined;
+      project.height = undefined;
+    }
+  }
+  project.name = name.trim();
   saveProject(project);
   return project;
 }

@@ -6,7 +6,6 @@ import {
   Film,
   Image,
   Presentation,
-  Mic,
   Type,
   Plus,
   MousePointer2,
@@ -48,24 +47,6 @@ const tools = [
     title: "Give your ideas the big picture.",
     description:
       "Bring a new perspective to your next presentation, one thoughtfully designed slide at a time.",
-  },
-  {
-    id: "podcast",
-    name: "Audio",
-    icon: Mic,
-    color: "mint",
-    title: "Good stories deserve to be heard.",
-    description:
-      "Organize your audio and shape the visual identity of your next episode in one workspace.",
-  },
-  {
-    id: "script",
-    name: "Scripts",
-    icon: Type,
-    color: "pink",
-    title: "Every great story starts here.",
-    description:
-      "Get your ideas out of your head and onto the page with a focused writing workspace.",
   },
 ];
 
@@ -143,7 +124,7 @@ export default function LandingPage({
               </svg>
             </h1>
             <p>
-              Videos, visuals, slides, and sound.
+              Videos, designs, slides, and documents.
               <br />
               Everything you need to make your next
               <br className="desktop-break" /> great thing, in one happy place.

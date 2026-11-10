@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Plus, X, ArrowUpRight } from "lucide-react";
+import {
+  defaultFormat,
+  formatsFor,
+  formatLabel,
+  canvasFormats,
+} from "../lib/formats";
+import { projectTemplates } from "../lib/templates";
+import TemplatePreview from "./TemplatePreview";
 import { studioTypes } from "../lib/studio-types";
 import { startProject } from "../lib/projects";
 import type { StudioProject } from "../lib/projects";
@@ -16,8 +24,15 @@ export default function NewProjectDialog({
 }) {
   const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
-  const [ratio, setRatio] = useState(
-    studioTypes.find((t) => t.id === initialMode)?.ratio || "16:9",
+  const [formatId, setFormatId] = useState(
+    defaultFormat(initialMode)?.id || "video-youtube",
+  );
+  const [templateId, setTemplateId] = useState("");
+  const selectedFormat = canvasFormats.find(
+    (format) => format.id === formatId,
+  )!;
+  const selectedTemplate = projectTemplates.find(
+    (template) => template.id === templateId,
   );
   const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
@@ -30,7 +45,15 @@ export default function NewProjectDialog({
     event.preventDefault();
     setError("");
     try {
-      onCreated(startProject({ name, mode, ratio }));
+      onCreated(
+        startProject({
+          name,
+          mode,
+          ratio: selectedFormat.ratio,
+          formatId,
+          templateId: templateId || undefined,
+        }),
+      );
     } catch (e) {
       setError(
         e instanceof Error && !/quota|storage/i.test(e.message)
@@ -94,9 +117,8 @@ export default function NewProjectDialog({
                 className={mode === id ? "active" : ""}
                 onClick={() => {
                   setMode(id);
-                  setRatio(
-                    studioTypes.find((t) => t.id === id)?.ratio || "16:9",
-                  );
+                  setFormatId(defaultFormat(id)!.id);
+                  setTemplateId("");
                 }}
               >
                 <Icon size={19} />
@@ -106,19 +128,56 @@ export default function NewProjectDialog({
           </div>
         </fieldset>
         <label htmlFor="new-project-format">
-          Canvas format
+          {mode === "video" ? "Platform & frame size" : "Size & format"}
           <select
             id="new-project-format"
-            aria-label="Canvas format"
-            value={ratio}
-            onChange={(e) => setRatio(e.target.value)}
+            aria-label={mode === "video" ? "Video frame size" : "Canvas format"}
+            value={formatId}
+            onChange={(e) => {
+              setFormatId(e.target.value);
+              setTemplateId("");
+            }}
           >
-            <option value="16:9">Landscape · 16:9</option>
-            <option value="9:16">Portrait · 9:16</option>
-            <option value="1:1">Square · 1:1</option>
-            <option value="4:5">Social post · 4:5</option>
+            {formatsFor(mode).map((format) => (
+              <option key={format.id} value={format.id}>
+                {formatLabel(format)} · {format.ratio}
+              </option>
+            ))}
           </select>
         </label>
+        <label htmlFor="new-project-template">
+          Starting template
+          <select
+            id="new-project-template"
+            aria-label="Starting template"
+            value={templateId}
+            onChange={(e) => {
+              setTemplateId(e.target.value);
+              const template = projectTemplates.find(
+                (t) => t.id === e.target.value,
+              );
+              if (template && !name.trim()) setName(template.name);
+            }}
+          >
+            <option value="">Blank project</option>
+            {projectTemplates
+              .filter(
+                (template) =>
+                  template.mode === mode && template.formatId === formatId,
+              )
+              .map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        {selectedTemplate && (
+          <div className="new-project-template-preview">
+            <TemplatePreview template={selectedTemplate} />
+            <p>{selectedTemplate.description}</p>
+          </div>
+        )}
         {error && (
           <div className="account-message error" role="alert">
             {error}

@@ -2,14 +2,11 @@ import {
   Film,
   Image,
   Presentation,
-  Mic,
-  Type,
   Printer,
   Camera,
   FileText,
   Table2,
   Globe,
-  Megaphone,
 } from "lucide-react";
 export const studioTypes = [
   {
@@ -23,7 +20,7 @@ export const studioTypes = [
   {
     id: "image",
     label: "Design",
-    desc: "Give your ideas a look.",
+    desc: "Logos, art, frames, and cards.",
     icon: Image,
     color: "lavender",
     ratio: "1:1",
@@ -31,25 +28,9 @@ export const studioTypes = [
   {
     id: "present",
     label: "Slides",
-    desc: "Make your point beautifully.",
+    desc: "Presentation decks for your ideas.",
     icon: Presentation,
     color: "yellow",
-    ratio: "16:9",
-  },
-  {
-    id: "podcast",
-    label: "Audio",
-    desc: "Make a little noise.",
-    icon: Mic,
-    color: "mint",
-    ratio: "16:9",
-  },
-  {
-    id: "script",
-    label: "Script",
-    desc: "Start with a few words.",
-    icon: Type,
-    color: "pink",
     ratio: "16:9",
   },
   {
@@ -91,13 +72,5 @@ export const studioTypes = [
     icon: Globe,
     color: "lavender",
     ratio: "16:9",
-  },
-  {
-    id: "social",
-    label: "Social",
-    desc: "Make something worth sharing.",
-    icon: Megaphone,
-    color: "pink",
-    ratio: "9:16",
   },
 ];

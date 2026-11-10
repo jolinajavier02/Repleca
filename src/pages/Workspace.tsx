@@ -27,8 +27,16 @@ import ProjectThumbnail from "../components/ProjectThumbnail";
 import MediaLibrary from "./MediaLibrary";
 import ExportCenter from "./ExportCenter";
 import SettingsPage from "./SettingsPage";
-import { readProjects, saveProject, projectStorageKey } from "../lib/projects";
+import {
+  readProjects,
+  saveProject,
+  projectStorageKey,
+  startProject,
+} from "../lib/projects";
 import { addMedia, portableProject } from "../lib/media";
+import TemplateBrowser from "../components/TemplateBrowser";
+import { projectTemplates } from "../lib/templates";
+import { canvasFormats, validRatio } from "../lib/formats";
 import { studioTypes } from "../lib/studio-types";
 import NewProjectDialog from "../components/NewProjectDialog";
 import { useAuth } from "../lib/auth";
@@ -40,25 +48,6 @@ const navItems = [
   { id: "templates", label: "Templates", icon: LayoutTemplate },
   { id: "media", label: "Media library", icon: Image },
 ];
-const templates = [
-  { name: "The slow edit", mode: "video", label: "Video", variant: 0 },
-  { name: "A fresh perspective", mode: "image", label: "Design", variant: 1 },
-  { name: "Ideas worth sharing", mode: "present", label: "Slides", variant: 2 },
-  {
-    name: "The slow days podcast",
-    mode: "podcast",
-    label: "Audio",
-    variant: 3,
-  },
-  {
-    name: "Your next great story",
-    mode: "script",
-    label: "Script",
-    variant: 4,
-  },
-  { name: "A little golden hour", mode: "image", label: "Design", variant: 5 },
-];
-
 export default function Workspace({
   view,
   onNavigate,
@@ -124,7 +113,8 @@ export default function Workspace({
         if (
           !p.id ||
           typeof p.name !== "string" ||
-          !studioTypes.some((type) => type.id === p.mode) ||
+          (!studioTypes.some((type) => type.id === p.mode) &&
+            !["podcast", "script", "social"].includes(p.mode)) ||
           !Array.isArray(p.scenes) ||
           !p.scenes.length ||
           p.scenes.some(
@@ -136,7 +126,15 @@ export default function Workspace({
               s.variant < 0 ||
               s.variant > 5,
           ) ||
-          !["16:9", "9:16", "1:1", "4:5"].includes(p.ratio) ||
+          !validRatio(p.ratio) ||
+          ((p.width !== undefined || p.height !== undefined) &&
+            ![p.width, p.height].every(
+              (size) =>
+                typeof size === "number" &&
+                Number.isFinite(size) &&
+                size > 0 &&
+                size <= 20000,
+            )) ||
           typeof p.title !== "string" ||
           typeof p.subtitle !== "string" ||
           typeof p.script !== "string" ||
@@ -372,108 +370,100 @@ export default function Workspace({
                     ? "Your recent projects"
                     : "Your projects"}{" "}
                 <span>
-                  {view === "templates" ? templates.length : projects.length}
+                  {view === "templates"
+                    ? projectTemplates.length
+                    : projects.length}
                 </span>
               </h2>
-              <div>
-                {view !== "templates" && (
-                  <button
-                    className="text-button"
-                    onClick={() => importRef.current?.click()}
-                  >
-                    <Upload size={15} /> Import project
-                  </button>
-                )}
-                <input
-                  ref={importRef}
-                  type="file"
-                  accept="application/json,.json"
-                  hidden
-                  onChange={(e) => importProject(e.target.files?.[0])}
-                />
-                <button
-                  className={`icon-button ${!list ? "selected-view" : ""}`}
-                  aria-label="Grid view"
-                  onClick={() => setList(false)}
-                >
-                  <LayoutGrid size={17} />
-                </button>
-                <button
-                  className={`icon-button ${list ? "selected-view" : ""}`}
-                  aria-label="List view"
-                  onClick={() => setList(true)}
-                >
-                  <List size={17} />
-                </button>
-              </div>
-            </div>
-            <div className="project-filters">
-              <div>
-                {["All", ...studioTypes.map((type) => type.label)].map((f) => (
-                  <button
-                    key={f}
-                    className={filter === f ? "active" : ""}
-                    onClick={() => setFilter(f)}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-              <div className="search-field">
-                <Search size={16} />
-                <input
-                  aria-label="Search projects or templates"
-                  placeholder={
-                    view === "templates"
-                      ? "Find a template…"
-                      : "Find a project…"
-                  }
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            {view === "templates" ? (
-              <div className={`workspace-projects ${list ? "list-view" : ""}`}>
-                {templates
-                  .filter(
-                    (t) =>
-                      (filter === "All" || t.label === filter) &&
-                      t.name.toLowerCase().includes(search.toLowerCase()),
-                  )
-                  .map((t) => (
+              {view !== "templates" && (
+                <div>
+                  {view !== "templates" && (
                     <button
-                      className="workspace-project-card"
-                      key={t.name}
-                      onClick={() =>
-                        navigate(
-                          `editor-${t.mode}?template=${t.variant}&name=${encodeURIComponent(t.name)}`,
-                        )
-                      }
+                      className="text-button"
+                      onClick={() => importRef.current?.click()}
                     >
-                      <div className="project-thumbnail">
-                        <StudioArtwork variant={t.variant} />
-                        <strong>{t.name}</strong>
-                        <span className="project-open">
-                          <ArrowUpRight size={20} />
-                        </span>
-                      </div>
-                      <div className="project-card-meta">
-                        <h3>{t.name}</h3>
-                        <span>{t.label} · Studio template</span>
-                      </div>
+                      <Upload size={15} /> Import project
                     </button>
-                  ))}
-                {!templates.some(
-                  (t) =>
-                    (filter === "All" || t.label === filter) &&
-                    t.name.toLowerCase().includes(search.toLowerCase()),
-                ) && (
-                  <p className="empty-message">
-                    No templates match your search.
-                  </p>
-                )}
+                  )}
+                  <input
+                    ref={importRef}
+                    type="file"
+                    accept="application/json,.json"
+                    hidden
+                    onChange={(e) => importProject(e.target.files?.[0])}
+                  />
+                  <button
+                    className={`icon-button ${!list ? "selected-view" : ""}`}
+                    aria-label="Grid view"
+                    onClick={() => setList(false)}
+                  >
+                    <LayoutGrid size={17} />
+                  </button>
+                  <button
+                    className={`icon-button ${list ? "selected-view" : ""}`}
+                    aria-label="List view"
+                    onClick={() => setList(true)}
+                  >
+                    <List size={17} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {view !== "templates" && (
+              <div className="project-filters">
+                <div>
+                  {["All", ...studioTypes.map((type) => type.label)].map(
+                    (f) => (
+                      <button
+                        key={f}
+                        className={filter === f ? "active" : ""}
+                        onClick={() => setFilter(f)}
+                      >
+                        {f}
+                      </button>
+                    ),
+                  )}
+                </div>
+                <div className="search-field">
+                  <Search size={16} />
+                  <input
+                    aria-label="Search projects or templates"
+                    placeholder={
+                      view === "templates"
+                        ? "Find a template…"
+                        : "Find a project…"
+                    }
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
               </div>
+            )}
+            {view === "templates" ? (
+              <TemplateBrowser
+                onChoose={(template) => {
+                  try {
+                    const format = canvasFormats.find(
+                      (f) => f.id === template.formatId,
+                    )!;
+                    const project = startProject({
+                      name: template.name,
+                      mode: template.mode,
+                      ratio: format.ratio,
+                      formatId: format.id,
+                      templateId: template.id,
+                    });
+                    setProjects(readProjects());
+                    navigate(`editor-${project.mode}?id=${project.id}`);
+                  } catch (error) {
+                    setNotice(
+                      error instanceof Error
+                        ? error.message
+                        : "Could not create this project.",
+                    );
+                  }
+                }}
+              />
             ) : visibleProjects.length ? (
               <div className={`workspace-projects ${list ? "list-view" : ""}`}>
                 {visibleProjects.map((p) => (

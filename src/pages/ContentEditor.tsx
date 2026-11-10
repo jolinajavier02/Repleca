@@ -10,7 +10,14 @@ import {
   Upload,
   X,
   Check,
+  LayoutTemplate,
+  Undo2,
 } from "lucide-react";
+import TemplatePickerDialog from "../components/TemplatePickerDialog";
+import FormatSelect from "../components/FormatSelect";
+import WebsiteViewport from "../components/WebsiteViewport";
+import { projectSize, canvasFormats, formatFields } from "../lib/formats";
+import { templateState } from "../lib/template-state";
 import Brand from "../components/Brand";
 import AccountMenu from "../components/AccountMenu";
 import {
@@ -46,6 +53,14 @@ export default function ContentEditor({
         cells: Array.from({ length: 20 }, () => Array(8).fill("")),
       },
   );
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateBackup, setTemplateBackup] = useState<StudioProject | null>(
+    null,
+  );
+  const [pageWidth, pageHeight] = projectSize(project);
+  const paper =
+    canvasFormats.find((format) => format.id === project.formatId)?.paper ||
+    "A4";
   const [notice, setNotice] = useState("");
   const [focused, setFocused] = useState("");
   const [pane, setPane] = useState("html");
@@ -177,10 +192,12 @@ export default function ContentEditor({
             <Save size={14} />
             Save
           </button>
-          {mode === "document" && (
+          {(mode === "document" || mode === "excel") && (
             <button
               className="icon-button"
-              aria-label="Print document"
+              aria-label={
+                mode === "excel" ? "Print worksheet" : "Print document"
+              }
               onClick={() => {
                 save();
                 window.print();
@@ -212,6 +229,31 @@ export default function ContentEditor({
               : "Make space for what you want to say."}
         </span>
         <div>
+          <button className="text-button" onClick={() => setTemplateOpen(true)}>
+            <LayoutTemplate size={14} />
+            Templates
+          </button>
+          {templateBackup && (
+            <button
+              className="text-button"
+              onClick={() => {
+                setProject({
+                  ...templateBackup,
+                  updated: new Date().toISOString(),
+                });
+                setTemplateBackup(null);
+              }}
+            >
+              <Undo2 size={14} />
+              Undo template
+            </button>
+          )}
+          <FormatSelect
+            mode={mode}
+            value={project.formatId}
+            ratio={project.ratio}
+            onChange={(id) => update(formatFields(id))}
+          />
           <button
             className="text-button"
             onClick={() => upload.current?.click()}
@@ -359,17 +401,24 @@ export default function ContentEditor({
             />
           </div>
           {preview && (
-            <iframe
-              title="Website preview"
-              sandbox=""
-              referrerPolicy="no-referrer"
-              srcDoc={safePreview}
+            <WebsiteViewport
+              width={pageWidth}
+              height={pageHeight}
+              html={safePreview}
             />
           )}
         </div>
       ) : (
         <main className="document-stage">
-          <article className="document-paper">
+          {project.templateNote && (
+            <aside className="document-template-note">
+              {project.templateNote}
+            </aside>
+          )}
+          <article
+            className="document-paper"
+            style={{ aspectRatio: `${pageWidth}/${pageHeight}` }}
+          >
             <span className="eyebrow">YOUR IDEAS, IN YOUR WORDS.</span>
             <input
               aria-label="Document title"
@@ -395,6 +444,21 @@ export default function ContentEditor({
             <p>{project.script}</p>
           </article>
         </main>
+      )}
+      <style media="print">{`@page { size: ${paper}; margin: 15mm; }`}</style>
+      {templateOpen && (
+        <TemplatePickerDialog
+          mode={mode}
+          onClose={() => setTemplateOpen(false)}
+          onChoose={(template) => {
+            setTemplateBackup(project);
+            update(templateState(template.id, mode));
+            setTemplateOpen(false);
+            setNotice(
+              `${template.name} applied. You can undo this template change.`,
+            );
+          }}
+        />
       )}
       {notice && (
         <div className="toast" role="status">
