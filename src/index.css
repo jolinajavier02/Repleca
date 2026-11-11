@@ -6770,3 +6770,285 @@ textarea {
     width: 100%;
   }
 }
+
+/* The studio keeps the preview open and its scene controls together. */
+.streamlined-editor .preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.streamlined-editor .canvas-bottom {
+  height: 48px;
+}
+.streamlined-editor .preview-actions .header-divider {
+  height: 18px;
+  margin-inline: 5px;
+}
+.streamlined-editor .rail-account {
+  margin-top: auto;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  color: #838b76;
+  font-size: 9px;
+}
+.streamlined-editor .rail-account .avatar {
+  margin: 0;
+}
+.streamlined-editor .rail-account .account-user-menu {
+  top: auto;
+  bottom: 0;
+  left: 45px;
+  right: auto;
+  text-align: left;
+}
+.streamlined-editor .asset-panel .property-section {
+  padding: 18px 0;
+}
+.streamlined-editor .asset-panel .property-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.streamlined-editor .timeline {
+  height: 204px;
+  background: var(--paper);
+}
+.streamlined-editor .timeline.scene-timeline {
+  height: 178px;
+}
+.streamlined-editor .unified-transport {
+  height: 54px;
+  padding: 0 20px;
+  justify-content: flex-start;
+  gap: 12px;
+  overflow-x: auto;
+}
+.streamlined-editor .unified-transport > div {
+  gap: 7px;
+  flex-shrink: 0;
+}
+.streamlined-editor .unified-transport .transport-controls {
+  flex: 1 0 380px;
+  max-width: 720px;
+}
+.streamlined-editor .unified-transport .header-divider {
+  height: 22px;
+  flex-shrink: 0;
+  margin: 0 5px;
+}
+.streamlined-editor .unified-transport .icon-button {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 6px;
+}
+.streamlined-editor .unified-transport .play-button {
+  width: 33px;
+  height: 33px;
+  flex-shrink: 0;
+}
+.streamlined-editor .playback-time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink);
+  margin: 0 7px;
+}
+.streamlined-editor .playback-time > span {
+  color: #879279;
+}
+.streamlined-editor .playback-seek {
+  flex: 1;
+  min-width: 75px;
+  width: 140px;
+  accent-color: var(--orange);
+  cursor: pointer;
+}
+.streamlined-editor .timeline-total {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.streamlined-editor .scene-strip-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  padding: 0 20px 12px;
+  scroll-padding-inline: 20px;
+}
+.streamlined-editor .scene-strip-content {
+  position: relative;
+  min-width: 100%;
+  padding-top: 10px;
+}
+.streamlined-editor .scene-ruler {
+  display: flex;
+  height: 20px;
+  align-items: flex-start;
+  color: #8b977d;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.streamlined-editor .scene-ruler > span {
+  flex-shrink: 0;
+  border-left: 1px solid #d5dbcc;
+  padding-left: 5px;
+}
+.streamlined-editor .scene-track {
+  height: 94px;
+  margin: 0;
+  gap: 10px;
+}
+.streamlined-editor .scene-clip {
+  flex: none;
+  min-width: 190px;
+  border-radius: 6px;
+}
+.streamlined-editor .scene-clip > .studio-artwork {
+  width: 100%;
+  height: 100%;
+}
+.streamlined-editor .scene-clip > div {
+  align-items: flex-end;
+  padding: 10px;
+  font-size: 10px;
+  background: linear-gradient(transparent 35%, #243221a6);
+}
+.streamlined-editor .scene-clip > div > span {
+  font-size: 9px;
+}
+.streamlined-editor .scene-clip small {
+  font-size: 9px;
+  padding-block: 2px;
+}
+.streamlined-editor .add-scene-tile {
+  width: 110px;
+  flex: none;
+  border: 1px dashed #bec8b0;
+  background: #f0f2e9;
+  color: #6c7a5c;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 11px;
+}
+.streamlined-editor .add-scene-tile:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: #faf0e9;
+}
+.streamlined-editor .timeline-playhead {
+  top: 26px;
+  bottom: 0;
+  margin: 0;
+  max-width: none;
+  z-index: 2;
+}
+.streamlined-editor .audio-track {
+  height: 26px;
+}
+.streamlined-editor .canvas-stage:fullscreen {
+  background: #f0f1e9;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.trim-dialog form {
+  display: grid;
+  gap: 18px;
+}
+.trim-dialog label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  text-align: left;
+}
+.trim-dialog input {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 10px;
+  background: var(--paper);
+}
+@media (max-width: 700px) {
+  .streamlined-editor .editor-header-left > .brand {
+    display: flex;
+  }
+  .streamlined-editor .editor-header-left {
+    min-width: 0;
+  }
+  .streamlined-editor .project-name > input {
+    width: 145px;
+  }
+  .streamlined-editor .unified-transport {
+    height: 92px;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 6px 10px;
+    overflow: hidden;
+  }
+  .streamlined-editor .unified-transport .transport-controls {
+    flex: 1 1 100%;
+    min-width: 0;
+    gap: 2px;
+  }
+  .streamlined-editor .playback-time {
+    font-size: 9px;
+    margin-inline: 3px;
+  }
+  .streamlined-editor .playback-seek {
+    min-width: 40px;
+    width: 40px;
+  }
+  .streamlined-editor .unified-transport .timeline-edit-tools {
+    gap: 5px;
+  }
+  .streamlined-editor .timeline-edit-tools > .header-divider {
+    display: none;
+  }
+  .streamlined-editor .timeline {
+    height: 238px;
+  }
+  .streamlined-editor .timeline.scene-timeline {
+    height: 177px;
+  }
+  .streamlined-editor .scene-timeline .unified-transport {
+    height: 48px;
+  }
+  .streamlined-editor .timeline-total {
+    font-size: 9px;
+  }
+  .streamlined-editor .scene-strip-scroll {
+    padding-inline: 12px;
+  }
+  .streamlined-editor .rail-account {
+    font-size: 7px;
+    padding: 8px 0;
+  }
+  .streamlined-editor .rail-account .avatar {
+    width: 29px;
+    height: 29px;
+  }
+  .streamlined-editor .rail-account .account-user-menu {
+    left: 36px;
+  }
+  .streamlined-editor .canvas-bottom > span {
+    display: block;
+    font-size: 8px;
+  }
+  .streamlined-editor .preview-actions {
+    gap: 2px;
+  }
+}
+@media (max-width: 700px) {
+  .streamlined-editor .canvas-bottom > span {
+    order: 0;
+  }
+  .streamlined-editor .preview-actions {
+    order: 1;
+  }
+}

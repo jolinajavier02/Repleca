@@ -19,7 +19,7 @@ Open http://localhost:3000/Repleca/. The configured base path is `/Repleca/`.
 - Video, design, slides, printing, photo editing, documents, Excel-compatible spreadsheets, and websites. Audio, Script/Transcript, and Social are removed from workspace creation choices; saved legacy projects are retained.
 - A file-first Media library, account menu inside the sidebar creative-space card, exports, and settings. Analytics and Brand Kit are removed from navigation.
 
-The editor supports scene selection, splitting and duplication, editable text, color palettes, scale/opacity, aspect ratios, media uploads, playback preview, and undo/redo. On mobile, tool and property panels open as drawers.
+The visual editor has a single playback and editing bar with previous/next scene controls, elapsed/total time, seeking, split, trim, duplicate, and delete. Larger scene thumbnails scroll horizontally, with Add Scene at the end; playback follows the playhead through the strip. Undo/redo and full preview sit below the canvas. Properties opens from the left toolkit below Templates, and the account menu sits at the bottom of that rail. Export includes Save Project, project-file download, artwork export, and printing where supported. On mobile, toolkit panels open as drawers. Trimming saves scene timing and source offsets for preview and project files; video encoding remains unavailable.
 
 ## Project storage and export
 

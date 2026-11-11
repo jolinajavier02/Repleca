@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  ArrowLeft,
   ArrowUpRight,
   Check,
   Film,
@@ -23,13 +22,12 @@ import {
   Copy,
   Trash2,
   Volume2,
+  Crop,
   Layers,
   X,
   Download,
   Maximize2,
   Save,
-  Eye,
-  PanelRightClose,
 } from "lucide-react";
 import Brand from "../components/Brand";
 import AccountMenu from "../components/AccountMenu";
@@ -67,6 +65,7 @@ const panels = [
   { id: "elements", label: "Elements", icon: Shapes },
   { id: "audio", label: "Audio", icon: Music2 },
   { id: "templates", label: "Templates", icon: LayoutTemplate },
+  { id: "properties", label: "Properties", icon: Layers },
 ];
 
 export default function StudioEditor({
@@ -118,18 +117,20 @@ export default function StudioEditor({
   const [past, setPast] = useState<StudioProject[]>([]);
   const [future, setFuture] = useState<StudioProject[]>([]);
   const [panel, setPanel] = useState("media");
-  const [selected, setSelected] = useState(0);
+  const [selectedIndex, setSelected] = useState(0);
+  const selected = Math.min(selectedIndex, project.scenes.length - 1);
   const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(0);
-  const [zoom, setZoom] = useState(75);
+  const [playbackTime, setTime] = useState(0);
   const [search, setSearch] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
-  const [properties, setProperties] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(false);
-  const [propTab, setPropTab] = useState("design");
   const [muted, setMuted] = useState(false);
+  const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
+  const trimRef = useRef<HTMLDialogElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const sceneRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const canvasRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -143,11 +144,12 @@ export default function StudioEditor({
   const fittedWidth = Math.max(
     80,
     Math.min(
-      ((stageSize.width - 48) * zoom) / 100,
+      (stageSize.width - 48) * 0.9,
       ((stageSize.height - 55) * canvasWidth) / canvasHeight,
     ),
   );
   const duration = project.scenes.reduce((sum, s) => sum + s.duration, 0);
+  const time = Math.min(playbackTime, duration);
   const timed = mode === "video" || mode === "podcast";
   const edit = (changes: Partial<StudioProject>) => {
     if (
@@ -212,35 +214,30 @@ export default function StudioEditor({
   }, [notice]);
   useEffect(() => {
     if (!playing) return;
-    const timer = setInterval(
-      () =>
-        setTime((t) => {
-          if (t + 0.1 >= duration) {
-            setPlaying(false);
-            return 0;
-          }
-          return t + 0.1;
-        }),
-      100,
-    );
+    const timer = setInterval(() => {
+      const next = Math.min(duration, time + 0.1);
+      setTime(next);
+      let end = 0;
+      const index = project.scenes.findIndex((scene) => {
+        end += scene.duration;
+        return next < end;
+      });
+      setSelected(index < 0 ? project.scenes.length - 1 : index);
+      if (next >= duration) setPlaying(false);
+    }, 100);
     return () => clearInterval(timer);
-  }, [playing, duration]);
-  useEffect(() => {
-    if (!playing) return;
-    let end = 0;
-    const index = project.scenes.findIndex((s) => {
-      end += s.duration;
-      return time < end;
-    });
-    if (index >= 0) setSelected(index);
-  }, [time, playing, project.scenes]);
+  }, [playing, duration, time, project.scenes]);
   useEffect(() => {
     const media = videoRef.current || audioRef.current;
     if (!media) return;
     if (playing) {
+      const start = project.scenes
+        .slice(0, selected)
+        .reduce((n, scene) => n + scene.duration, 0);
+      const sourceTime = (activeScene.trimStart ?? start) + time - start;
       media.currentTime = Math.min(
-        time,
-        Number.isFinite(media.duration) ? media.duration : time,
+        sourceTime,
+        Number.isFinite(media.duration) ? media.duration : sourceTime,
       );
       void media.play().catch(() => {
         setPlaying(false);
@@ -249,7 +246,7 @@ export default function StudioEditor({
     } else media.pause();
     // Playback position is set when the playback state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, project.media]);
+  }, [playing, project.media, selected]);
   useEffect(() => {
     if (exportOpen) dialogRef.current?.showModal();
     else dialogRef.current?.close();
@@ -268,16 +265,20 @@ export default function StudioEditor({
         if (active) setLibrary(files);
       })
       .catch(() => {});
-    try {
-      saveProject(project);
-      const params = new URLSearchParams(query);
-      if (!params.has("id")) {
-        params.set("id", project.id);
-        history.replaceState(null, "", `#/editor-${mode}?${params}`);
-      }
-    } catch {
-      setNotice("Your project could not be saved. Check device storage.");
-    }
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return;
+        saveProject(project);
+        const params = new URLSearchParams(query);
+        if (!params.has("id")) {
+          params.set("id", project.id);
+          history.replaceState(null, "", `#/editor-${mode}?${params}`);
+        }
+      })
+      .catch(() => {
+        if (active)
+          setNotice("Your project could not be saved. Check device storage.");
+      });
     return () => {
       active = false;
     };
@@ -286,7 +287,6 @@ export default function StudioEditor({
   useEffect(() => {
     const id = project.media?.assetId;
     if (!id) return;
-    setMissingMedia(false);
     let active = true;
     let url = "";
     void getMedia(id)
@@ -299,6 +299,7 @@ export default function StudioEditor({
           );
           return;
         }
+        setMissingMedia(false);
         url = URL.createObjectURL(asset.blob);
         setProject((p) =>
           p.media?.assetId === id
@@ -347,11 +348,71 @@ export default function StudioEditor({
     }
     onNavigate("projects");
   };
-  const pickScene = (index: number) => {
+  const seek = (value: number, keepPlaying = false) => {
+    const next = Math.max(0, Math.min(duration, value));
+    let end = 0;
+    let index = project.scenes.findIndex((scene) => {
+      end += scene.duration;
+      return next < end;
+    });
+    if (index < 0) index = project.scenes.length - 1;
     setSelected(index);
-    setPlaying(false);
-    setTime(project.scenes.slice(0, index).reduce((n, s) => n + s.duration, 0));
+    setTime(next);
+    if (!keepPlaying) setPlaying(false);
+    const start = project.scenes
+      .slice(0, index)
+      .reduce((n, scene) => n + scene.duration, 0);
+    const sourceTime =
+      (project.scenes[index].trimStart ?? start) + next - start;
+    const media = videoRef.current || audioRef.current;
+    if (media && media.readyState)
+      media.currentTime = Math.min(
+        sourceTime,
+        Number.isFinite(media.duration) ? media.duration : sourceTime,
+      );
   };
+  const pickScene = (index: number, keepPlaying = false) => {
+    seek(
+      project.scenes
+        .slice(0, index)
+        .reduce((n, scene) => n + scene.duration, 0),
+      keepPlaying,
+    );
+  };
+  const clipWidths = project.scenes.map((scene) =>
+    Math.max(190, scene.duration * 22),
+  );
+  const stripWidth = clipWidths.reduce((n, width) => n + width + 10, 0);
+  const sceneStart = project.scenes
+    .slice(0, selected)
+    .reduce((n, scene) => n + scene.duration, 0);
+  const playheadX =
+    clipWidths.slice(0, selected).reduce((n, width) => n + width + 10, 0) +
+    Math.max(0, Math.min(1, (time - sceneStart) / activeScene.duration)) *
+      clipWidths[selected];
+  useEffect(() => {
+    if (!playing)
+      sceneRefs.current.get(activeScene.id)?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+  }, [activeScene.id, playing]);
+  useEffect(() => {
+    const track = trackRef.current;
+    if (
+      playing &&
+      track &&
+      (playheadX > track.scrollLeft + track.clientWidth - 50 ||
+        playheadX < track.scrollLeft)
+    ) {
+      track.scrollTo({ left: Math.max(0, playheadX - 80), behavior: "smooth" });
+    }
+  }, [playheadX, playing]);
+  useEffect(() => {
+    if (trim) trimRef.current?.showModal();
+    else trimRef.current?.close();
+  }, [trim]);
   const upload = async (file?: File) => {
     if (!file) return;
     if (!/^(image|video|audio)\//.test(file.type)) {
@@ -395,6 +456,7 @@ export default function StudioEditor({
         id: crypto.randomUUID(),
         name: `${activeScene.name} (cut)`,
         duration: activeScene.duration - offset,
+        trimStart: (activeScene.trimStart ?? start) + offset,
       },
     );
     edit({ scenes });
@@ -472,17 +534,10 @@ export default function StudioEditor({
     setNotice("Your artwork has been downloaded.");
   };
   return (
-    <div className="editor-shell">
+    <div className="editor-shell streamlined-editor">
       <style media="print">{`@page { size: ${canvasFormats.find((format) => format.id === project.formatId)?.paper || "A4"}; margin: 0; }`}</style>
       <header className="editor-header">
         <div className="editor-header-left">
-          <button
-            className="icon-button"
-            aria-label="Back to projects"
-            onClick={leave}
-          >
-            <ArrowLeft size={19} />
-          </button>
           <Brand compact onClick={leave} />
           <span className="header-divider" />
           <div className="project-name">
@@ -502,58 +557,11 @@ export default function StudioEditor({
         </div>
         <div className="editor-header-right">
           <button
-            className="icon-button"
-            disabled={!past.length}
-            onClick={undo}
-            aria-label="Undo"
-          >
-            <Undo2 size={17} />
-          </button>
-          <button
-            className="icon-button"
-            disabled={!future.length}
-            onClick={redo}
-            aria-label="Redo"
-          >
-            <Redo2 size={17} />
-          </button>
-          <span className="header-divider" />
-          <button
-            className="button button-outline small save-button"
-            onClick={save}
-          >
-            <Save size={15} /> Save
-          </button>
-          {mode === "printing" && (
-            <button
-              className="button button-outline small"
-              onClick={() => window.print()}
-            >
-              Print
-            </button>
-          )}
-          <button
             className="button button-orange small"
             onClick={() => setExportOpen(true)}
           >
             Export <ArrowUpRight size={16} />
           </button>
-          <AccountMenu
-            onNavigate={onNavigate}
-            onBeforeLogout={() => {
-              if (!dirty) return true;
-              try {
-                saveProject(project);
-                setDirty(false);
-                return true;
-              } catch {
-                setNotice(
-                  "Please download your project before logging out; device storage is full.",
-                );
-                return false;
-              }
-            }}
-          />
         </div>
       </header>
       <div className="editor-workspace">
@@ -565,7 +573,6 @@ export default function StudioEditor({
               onClick={() => {
                 setPanel(id);
                 setAssetsOpen(true);
-                setProperties(false);
                 setSearch("");
               }}
             >
@@ -573,13 +580,24 @@ export default function StudioEditor({
               <span>{label}</span>
             </button>
           ))}
-          <button
-            className="rail-bottom"
-            onClick={() => setProperties(!properties)}
-          >
-            <Layers size={21} />
-            <span>Properties</span>
-          </button>
+          <div className="rail-account">
+            <AccountMenu
+              onNavigate={onNavigate}
+              onBeforeLogout={() => {
+                try {
+                  saveProject(project);
+                  setDirty(false);
+                  return true;
+                } catch {
+                  setNotice(
+                    "Please download your project before signing out; device storage is full.",
+                  );
+                  return false;
+                }
+              }}
+            />
+            <span>Account</span>
+          </div>
         </nav>
         <aside className={`asset-panel ${assetsOpen ? "mobile-open" : ""}`}>
           <div className="panel-heading">
@@ -868,232 +886,7 @@ export default function StudioEditor({
               }}
             />
           )}
-          <div className="asset-panel-bottom">
-            <span className="status-dot" /> A little space for big ideas.
-          </div>
-        </aside>
-        <main className="editor-main">
-          <div className="canvas-toolbar">
-            <span>
-              <span className="status-dot" />
-              {mode === "script" ? "Writing room" : "Your canvas"}
-            </span>
-            <div>
-              <FormatSelect
-                mode={mode}
-                value={project.formatId}
-                ratio={project.ratio}
-                label={mode === "video" ? "Video frame size" : "Canvas format"}
-                onChange={(id) => edit(formatFields(id))}
-              />
-              <button
-                className="icon-button"
-                aria-label="Show canvas properties"
-                onClick={() => setProperties(!properties)}
-              >
-                <PanelRightClose size={17} />
-              </button>
-            </div>
-          </div>
-          <div
-            className="canvas-stage"
-            ref={stageRef}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              upload(e.dataTransfer.files[0]);
-            }}
-          >
-            {mode === "script" ? (
-              <div className="script-sheet">
-                <span className="eyebrow">YOUR STORY STARTS HERE</span>
-                <input
-                  aria-label="Script title"
-                  value={activeTitle}
-                  onChange={(e) => edit({ title: e.target.value })}
-                />
-                <textarea
-                  aria-label="Script content"
-                  value={project.script}
-                  onChange={(e) => edit({ script: e.target.value })}
-                />
-                <span>
-                  {project.script.trim()
-                    ? project.script.trim().split(/\s+/).length
-                    : 0}{" "}
-                  words · Make every one count.
-                </span>
-              </div>
-            ) : (
-              <div
-                className={`editing-canvas layout-${project.templateStyle || "default"} ratio-${project.ratio.replace(":", "-")}`}
-                ref={canvasRef}
-                style={{
-                  aspectRatio: project.ratio.replace(":", "/"),
-                  width: `${fittedWidth}px`,
-                  maxWidth: "100%",
-                  maxHeight: "none",
-                }}
-              >
-                <div
-                  className="canvas-art"
-                  style={{
-                    transform: `scale(${project.scale / 100})`,
-                    opacity: project.opacity / 100,
-                    inset: `${project.photoInset || 0}%`,
-                  }}
-                >
-                  {project.media?.assetId && !project.media.src ? (
-                    <div className="canvas-file-state">
-                      {missingMedia
-                        ? "This file was removed from Media. Choose a replacement."
-                        : "Opening your media…"}
-                    </div>
-                  ) : project.media?.type.startsWith("image") ? (
-                    <img src={project.media.src} alt={project.media.name} />
-                  ) : project.media?.type.startsWith("video") ? (
-                    <video
-                      ref={videoRef}
-                      src={project.media.src}
-                      muted={muted}
-                      playsInline
-                    />
-                  ) : (
-                    <TemplateArtwork
-                      style={project.templateStyle}
-                      variant={activeScene.variant}
-                      aspect={canvasWidth / canvasHeight}
-                    />
-                  )}
-                </div>
-                <button
-                  className={`canvas-text ${panel === "text" ? "selected-text" : ""}`}
-                  onClick={() => {
-                    setPanel("text");
-                    setAssetsOpen(true);
-                  }}
-                  aria-label="Edit canvas text"
-                  style={{ color: project.color }}
-                >
-                  <span
-                    style={{
-                      fontSize: `${project.fontSize / 7}cqw`,
-                    }}
-                  >
-                    {activeTitle}
-                  </span>
-                  <small>{activeSubtitle}</small>
-                  {panel === "text" && (
-                    <>
-                      <i className="handle tl" />
-                      <i className="handle tr" />
-                      <i className="handle bl" />
-                      <i className="handle br" />
-                    </>
-                  )}
-                </button>
-                <span className="canvas-corner-tag">
-                  {project.scenes.length > 1
-                    ? `SCENE ${selected + 1}`
-                    : "YOUR CREATION"}
-                </span>
-              </div>
-            )}
-            {project.media?.type.startsWith("audio") && (
-              <audio ref={audioRef} src={project.media.src} muted={muted} />
-            )}
-          </div>
-          <div className="canvas-bottom">
-            <span>
-              {mode === "script"
-                ? "Draft"
-                : `${canvasWidth} × ${canvasHeight} px`}
-            </span>
-            {timed && (
-              <div className="playback-controls">
-                <button
-                  className="icon-button"
-                  aria-label="Go to beginning"
-                  onClick={() => {
-                    setTime(0);
-                    setPlaying(false);
-                    setSelected(0);
-                  }}
-                >
-                  <SkipBack size={15} />
-                </button>
-                <button
-                  className="play-button"
-                  aria-label={playing ? "Pause" : "Play preview"}
-                  onClick={() => setPlaying(!playing)}
-                >
-                  {playing ? (
-                    <Pause size={16} fill="currentColor" />
-                  ) : (
-                    <Play size={16} fill="currentColor" />
-                  )}
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="Next scene"
-                  onClick={() =>
-                    pickScene((selected + 1) % project.scenes.length)
-                  }
-                >
-                  <SkipForward size={15} />
-                </button>
-                <span>
-                  {clock(time)} <b>/ {clock(duration)}</b>
-                </span>
-              </div>
-            )}
-            <div className="zoom-control">
-              <select
-                aria-label="Canvas zoom"
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-              >
-                {[40, 55, 75, 90].map((z) => (
-                  <option key={z} value={z}>
-                    {z}%
-                  </option>
-                ))}
-              </select>
-              <button
-                className="icon-button"
-                aria-label="Fit canvas"
-                onClick={() => setZoom(90)}
-              >
-                <Maximize2 size={15} />
-              </button>
-            </div>
-          </div>
-        </main>
-        <aside
-          className={`properties-panel ${properties ? "mobile-open" : ""}`}
-        >
-          <div className="property-tabs">
-            <button
-              className={propTab === "design" ? "active" : ""}
-              onClick={() => setPropTab("design")}
-            >
-              Design
-            </button>
-            <button
-              className={propTab === "layers" ? "active" : ""}
-              onClick={() => setPropTab("layers")}
-            >
-              Layers
-            </button>
-            <button
-              className="icon-button mobile-close"
-              aria-label="Close properties"
-              onClick={() => setProperties(false)}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          {propTab === "design" ? (
+          {panel === "properties" && (
             <>
               <div className="property-section">
                 <div className="property-heading">
@@ -1130,8 +923,9 @@ export default function StudioEditor({
                     Duration (s)
                     <input
                       type="number"
-                      min="1"
+                      min="0.5"
                       max="120"
+                      step="0.1"
                       value={activeScene.duration}
                       onChange={(e) =>
                         edit({
@@ -1140,8 +934,11 @@ export default function StudioEditor({
                               ? {
                                   ...s,
                                   duration: Math.max(
-                                    1,
-                                    Math.min(120, Number(e.target.value) || 1),
+                                    0.5,
+                                    Math.min(
+                                      120,
+                                      Number(e.target.value) || 0.5,
+                                    ),
                                   ),
                                 }
                               : s,
@@ -1274,55 +1071,254 @@ export default function StudioEditor({
                 </button>
               )}
             </>
-          ) : (
-            <div className="layers-list">
-              <p className="panel-description">
-                Your composition, one piece at a time.
-              </p>
-              <button
-                onClick={() => {
-                  setPanel("text");
-                  setAssetsOpen(true);
+          )}
+        </aside>
+        <main className="editor-main">
+          <div
+            className="canvas-stage"
+            ref={stageRef}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              upload(e.dataTransfer.files[0]);
+            }}
+          >
+            {mode === "script" ? (
+              <div className="script-sheet">
+                <span className="eyebrow">YOUR STORY STARTS HERE</span>
+                <input
+                  aria-label="Script title"
+                  value={activeTitle}
+                  onChange={(e) => edit({ title: e.target.value })}
+                />
+                <textarea
+                  aria-label="Script content"
+                  value={project.script}
+                  onChange={(e) => edit({ script: e.target.value })}
+                />
+                <span>
+                  {project.script.trim()
+                    ? project.script.trim().split(/\s+/).length
+                    : 0}{" "}
+                  words · Make every one count.
+                </span>
+              </div>
+            ) : (
+              <div
+                className={`editing-canvas layout-${project.templateStyle || "default"} ratio-${project.ratio.replace(":", "-")}`}
+                ref={canvasRef}
+                style={{
+                  aspectRatio: project.ratio.replace(":", "/"),
+                  width: `${fittedWidth}px`,
+                  maxWidth: "100%",
+                  maxHeight: "none",
                 }}
               >
-                <Type size={18} />
-                <span>Heading & subtitle</span>
-                <Eye size={15} />
+                <div
+                  className="canvas-art"
+                  style={{
+                    transform: `scale(${project.scale / 100})`,
+                    opacity: project.opacity / 100,
+                    inset: `${project.photoInset || 0}%`,
+                  }}
+                >
+                  {project.media?.assetId && !project.media.src ? (
+                    <div className="canvas-file-state">
+                      {missingMedia
+                        ? "This file was removed from Media. Choose a replacement."
+                        : "Opening your media…"}
+                    </div>
+                  ) : project.media?.type.startsWith("image") ? (
+                    <img src={project.media.src} alt={project.media.name} />
+                  ) : project.media?.type.startsWith("video") ? (
+                    <video
+                      ref={videoRef}
+                      src={project.media.src}
+                      muted={muted}
+                      playsInline
+                    />
+                  ) : (
+                    <TemplateArtwork
+                      style={project.templateStyle}
+                      variant={activeScene.variant}
+                      aspect={canvasWidth / canvasHeight}
+                    />
+                  )}
+                </div>
+                <button
+                  className={`canvas-text ${panel === "text" ? "selected-text" : ""}`}
+                  onClick={() => {
+                    setPanel("text");
+                    setAssetsOpen(true);
+                  }}
+                  aria-label="Edit canvas text"
+                  style={{ color: project.color }}
+                >
+                  <span
+                    style={{
+                      fontSize: `${project.fontSize / 7}cqw`,
+                    }}
+                  >
+                    {activeTitle}
+                  </span>
+                  <small>{activeSubtitle}</small>
+                  {panel === "text" && (
+                    <>
+                      <i className="handle tl" />
+                      <i className="handle tr" />
+                      <i className="handle bl" />
+                      <i className="handle br" />
+                    </>
+                  )}
+                </button>
+                <span className="canvas-corner-tag">
+                  {project.scenes.length > 1
+                    ? `SCENE ${selected + 1}`
+                    : "YOUR CREATION"}
+                </span>
+              </div>
+            )}
+            {project.media?.type.startsWith("audio") && (
+              <audio ref={audioRef} src={project.media.src} muted={muted} />
+            )}
+          </div>
+          <div className="canvas-bottom">
+            <span>
+              {mode === "script"
+                ? "Draft"
+                : `${canvasWidth} × ${canvasHeight} px`}
+            </span>
+            <div className="preview-actions">
+              <button
+                className="icon-button"
+                disabled={!past.length}
+                onClick={undo}
+                aria-label="Undo"
+              >
+                <Undo2 size={17} />
               </button>
-              <button onClick={() => setPanel("media")}>
-                <Image size={18} />
-                <span>{project.media?.name || "Studio illustration"}</span>
-                <Eye size={15} />
+              <button
+                className="icon-button"
+                disabled={!future.length}
+                onClick={redo}
+                aria-label="Redo"
+              >
+                <Redo2 size={17} />
+              </button>
+              <span className="header-divider" />
+              <button
+                className="icon-button"
+                aria-label="Full preview"
+                onClick={() => {
+                  if (document.fullscreenElement)
+                    void document.exitFullscreen();
+                  else
+                    void stageRef.current
+                      ?.requestFullscreen()
+                      .catch(() =>
+                        setNotice(
+                          "Full preview is unavailable in this browser.",
+                        ),
+                      );
+                }}
+              >
+                <Maximize2 size={17} />
               </button>
             </div>
-          )}
-          <div className="property-bottom">
-            <span className="tiny-spark">✳</span> Make a little magic.
           </div>
-        </aside>
+        </main>
       </div>
       <section
         className={`timeline ${!timed ? "scene-timeline" : ""}`}
         aria-label="Project timeline"
       >
-        <div className="timeline-toolbar">
-          <div>
-            <span className="timeline-label">
-              {timed ? "Timeline" : mode === "present" ? "Slides" : "Scenes"}
-            </span>
-            <span className="header-divider" />
-            {timed && (
+        <div className="timeline-toolbar unified-transport">
+          {timed && (
+            <div className="transport-controls">
+              <button
+                className="play-button"
+                aria-label={playing ? "Pause" : "Play"}
+                onClick={() => {
+                  if (!playing && time >= duration) seek(0);
+                  setPlaying(!playing);
+                }}
+              >
+                {playing ? <Pause size={17} /> : <Play size={17} />}
+              </button>
+              <span className="header-divider" />
               <button
                 className="icon-button"
-                aria-label="Split scene at playhead"
-                onClick={splitScene}
+                aria-label="Previous scene"
+                disabled={selected === 0 && time === 0}
+                onClick={() => pickScene(Math.max(0, selected - 1), playing)}
               >
-                <Scissors size={16} />
+                <SkipBack size={17} />
               </button>
+              <button
+                className="icon-button"
+                aria-label="Next scene"
+                disabled={selected >= project.scenes.length - 1}
+                onClick={() =>
+                  pickScene(
+                    Math.min(project.scenes.length - 1, selected + 1),
+                    playing,
+                  )
+                }
+              >
+                <SkipForward size={17} />
+              </button>
+              <span className="playback-time">
+                {clock(time)} <span>/ {clock(duration)}</span>
+              </span>
+              <input
+                className="playback-seek"
+                type="range"
+                aria-label="Timeline playhead"
+                min="0"
+                max={duration}
+                step="0.1"
+                value={time}
+                onChange={(event) => seek(Number(event.target.value), playing)}
+              />
+              <button
+                className="icon-button"
+                aria-label={muted ? "Unmute audio" : "Mute audio"}
+                aria-pressed={muted}
+                onClick={() => setMuted(!muted)}
+              >
+                <Volume2 size={16} opacity={muted ? 0.35 : 1} />
+              </button>
+            </div>
+          )}
+          <div className="timeline-edit-tools">
+            {timed && (
+              <>
+                <span className="header-divider" />
+                <button
+                  className="icon-button"
+                  aria-label="Split scene at playhead"
+                  title="Split scene at playhead"
+                  onClick={splitScene}
+                >
+                  <Scissors size={17} />
+                </button>
+                <button
+                  className="icon-button"
+                  aria-label="Trim selected scene"
+                  title="Trim selected scene"
+                  onClick={() => {
+                    setPlaying(false);
+                    setTrim({ start: 0, end: activeScene.duration });
+                  }}
+                >
+                  <Crop size={17} />
+                </button>
+              </>
             )}
             <button
               className="icon-button"
               aria-label="Duplicate selected scene"
+              title="Duplicate selected scene"
               onClick={() => {
                 const scenes = [...project.scenes];
                 scenes.splice(selected + 1, 0, {
@@ -1331,146 +1327,125 @@ export default function StudioEditor({
                   name: `${activeScene.name} copy`,
                 });
                 edit({ scenes });
+                setPlaying(false);
+                setTime(sceneStart + activeScene.duration);
+                setSelected(selected + 1);
               }}
             >
-              <Copy size={16} />
+              <Copy size={17} />
             </button>
             <button
               className="icon-button"
               aria-label="Delete selected scene"
+              title="Delete selected scene"
               disabled={project.scenes.length <= 1}
               onClick={() => {
                 edit({
                   scenes: project.scenes.filter((_, i) => i !== selected),
                 });
+                setPlaying(false);
                 setSelected(Math.max(0, selected - 1));
-                setTime(0);
+                setTime(
+                  project.scenes
+                    .slice(0, Math.max(0, selected - 1))
+                    .reduce((n, scene) => n + scene.duration, 0),
+                );
               }}
             >
-              <Trash2 size={16} />
+              <Trash2 size={17} />
             </button>
           </div>
-          <div>
-            <button
-              className="text-button"
-              onClick={() => {
-                edit({
-                  scenes: [
-                    ...project.scenes,
-                    {
-                      id: crypto.randomUUID(),
-                      name: "A new idea",
-                      variant: (selected + 1) % 3,
-                      duration: 8,
-                    },
-                  ],
-                });
-                setSelected(project.scenes.length);
-              }}
-            >
-              <Plus size={15} /> Add scene
-            </button>
-            <span className="timeline-total">
-              {project.scenes.length} scenes · {clock(duration)}
-            </span>
-          </div>
+          <span className="timeline-total">
+            {project.scenes.length} {mode === "present" ? "slides" : "scenes"}
+            {!timed && ` · ${clock(duration)}`}
+          </span>
         </div>
-        <div className="timeline-body">
-          <div className="track-labels">
-            <span>
-              <Layers size={14} />
-              {timed ? "Scenes" : "Pages"}
-              <Film size={13} />
-            </span>
+        <div className="scene-strip-scroll" ref={trackRef}>
+          <div
+            className="scene-strip-content"
+            style={{ width: stripWidth + 120 }}
+          >
             {timed && (
-              <span>
-                <Music2 size={14} />
-                Audio
-                <button
-                  className="icon-button"
-                  aria-label={muted ? "Unmute audio" : "Mute audio"}
-                  aria-pressed={muted}
-                  onClick={() => setMuted(!muted)}
-                >
-                  <Volume2 size={13} opacity={muted ? 0.3 : 1} />
-                </button>
-              </span>
-            )}
-          </div>
-          <div className="track-area">
-            {timed && (
-              <div className="time-ruler">
-                <input
-                  type="range"
-                  aria-label="Timeline playhead"
-                  min="0"
-                  max={duration}
-                  step="0.1"
-                  value={time}
-                  onChange={(e) => {
-                    setPlaying(false);
-                    const t = Number(e.target.value);
-                    setTime(t);
-                    let end = 0;
-                    const index = project.scenes.findIndex((s) => {
-                      end += s.duration;
-                      return t < end;
-                    });
-                    if (index >= 0) setSelected(index);
-                  }}
-                />
-                <div>
-                  {Array.from({ length: 7 }, (_, i) => (
-                    <span key={i}>{clock((duration * i) / 6)}</span>
-                  ))}
-                </div>
+              <div className="scene-ruler">
+                {project.scenes.map((scene, index) => (
+                  <span
+                    key={scene.id}
+                    style={{ width: clipWidths[index] + 10 }}
+                  >
+                    {clock(
+                      project.scenes
+                        .slice(0, index)
+                        .reduce((n, item) => n + item.duration, 0),
+                    )}
+                  </span>
+                ))}
               </div>
             )}
             <div className="scene-track">
-              {project.scenes.map((s, i) => (
+              {project.scenes.map((scene, index) => (
                 <button
-                  key={s.id}
-                  className={`scene-clip ${selected === i ? "active" : ""}`}
-                  style={{ flexGrow: s.duration }}
-                  onClick={() => pickScene(i)}
+                  key={scene.id}
+                  ref={(node) => {
+                    if (node) sceneRefs.current.set(scene.id, node);
+                    else sceneRefs.current.delete(scene.id);
+                  }}
+                  className={`scene-clip ${selected === index ? "active" : ""}`}
+                  style={{ width: clipWidths[index] }}
+                  onClick={() => pickScene(index)}
+                  aria-label={`Scene ${index + 1}: ${scene.name}`}
+                  aria-pressed={selected === index}
                 >
                   <TemplateArtwork
                     style={project.templateStyle}
-                    variant={s.variant}
+                    variant={scene.variant}
                     aspect={canvasWidth / canvasHeight}
                   />
                   <div>
-                    <span>{String(i + 1).padStart(2, "0")}</span>
-                    {s.name}
-                    <small>{clock(s.duration)}</small>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {scene.name}
+                    <small>{clock(scene.duration)}</small>
                   </div>
                 </button>
               ))}
-            </div>
-            {timed && (
               <button
-                className={`audio-track ${project.media?.type.startsWith("audio") ? "has-audio" : ""}`}
+                className="add-scene-tile"
+                aria-label="Add scene"
+                onClick={() => {
+                  edit({
+                    scenes: [
+                      ...project.scenes,
+                      {
+                        id: crypto.randomUUID(),
+                        name: "A new idea",
+                        variant: project.scenes.length % 3,
+                        duration: 8,
+                      },
+                    ],
+                  });
+                  setPlaying(false);
+                  setTime(duration);
+                  setSelected(project.scenes.length);
+                }}
+              >
+                <Plus size={25} />
+                <span>{mode === "present" ? "Add slide" : "Add scene"}</span>
+              </button>
+            </div>
+            {timed && project.media?.type.startsWith("audio") && (
+              <button
+                className="audio-track has-audio"
+                style={{ width: stripWidth - 10 }}
                 onClick={() => {
                   setPanel("audio");
                   setAssetsOpen(true);
                 }}
               >
-                <Music2 size={13} />
-                {project.media?.type.startsWith("audio")
-                  ? project.media.name
-                  : "Add a soundtrack to your story"}
-                <span className="waveform">
-                  {Array.from({ length: 90 }, (_, i) => (
-                    <i key={i} style={{ height: `${4 + ((i * 13) % 17)}px` }} />
-                  ))}
-                </span>
+                <Music2 size={14} />
+                {project.media.name}
               </button>
             )}
             {timed && (
-              <div
-                className="timeline-playhead"
-                style={{ left: `${(time / duration) * 100}%` }}
-              >
+              <div className="timeline-playhead" style={{ left: playheadX }}>
                 <span />
               </div>
             )}
@@ -1490,6 +1465,84 @@ export default function StudioEditor({
           </button>
         </div>
       )}
+      <dialog
+        ref={trimRef}
+        className="export-dialog trim-dialog"
+        onCancel={() => setTrim(null)}
+      >
+        <button
+          className="icon-button dialog-close"
+          aria-label="Close trim"
+          onClick={() => setTrim(null)}
+        >
+          <X size={20} />
+        </button>
+        <h2>Trim scene</h2>
+        <p>
+          Choose the portion to keep from {activeScene.name}. Minimum length:
+          0.5 seconds.
+        </p>
+        {trim && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (
+                trim.start < 0 ||
+                trim.end > activeScene.duration ||
+                trim.end - trim.start < 0.5
+              )
+                return;
+              edit({
+                scenes: project.scenes.map((scene, index) =>
+                  index === selected
+                    ? {
+                        ...scene,
+                        duration: Number((trim.end - trim.start).toFixed(2)),
+                        trimStart: (scene.trimStart ?? sceneStart) + trim.start,
+                      }
+                    : scene,
+                ),
+              });
+              setTime(sceneStart);
+              setTrim(null);
+            }}
+          >
+            <label>
+              Start (seconds)
+              <input
+                aria-label="Trim start"
+                type="number"
+                min="0"
+                max={Math.max(0, trim.end - 0.5)}
+                step="0.1"
+                required
+                value={trim.start}
+                onChange={(event) =>
+                  setTrim({ ...trim, start: Number(event.target.value) })
+                }
+              />
+            </label>
+            <label>
+              End (seconds)
+              <input
+                aria-label="Trim end"
+                type="number"
+                min={trim.start + 0.5}
+                max={activeScene.duration}
+                step="0.1"
+                required
+                value={trim.end}
+                onChange={(event) =>
+                  setTrim({ ...trim, end: Number(event.target.value) })
+                }
+              />
+            </label>
+            <button className="button button-primary" type="submit">
+              Apply trim
+            </button>
+          </form>
+        )}
+      </dialog>
       <dialog
         ref={dialogRef}
         className="export-dialog"
@@ -1511,6 +1564,28 @@ export default function StudioEditor({
         <div className="eyebrow">READY FOR ITS NEXT CHAPTER.</div>
         <h2>Take your idea with you.</h2>
         <p>Save your editable project or download your current artwork.</p>
+        <button className="export-option" onClick={save}>
+          <Save size={22} />
+          <span>
+            <b>Save project</b>
+            <small>
+              {dirty
+                ? "Save your latest changes on this device"
+                : "All changes saved on this device"}
+            </small>
+          </span>
+          <Check size={19} />
+        </button>
+        {mode === "printing" && (
+          <button className="export-option" onClick={() => window.print()}>
+            <Download size={22} />
+            <span>
+              <b>Print artwork</b>
+              <small>Open your printer settings</small>
+            </span>
+            <ArrowUpRight size={19} />
+          </button>
+        )}
         <button
           className="export-option"
           onClick={async () => {
