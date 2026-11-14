@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   ArrowUpRight,
+  ArrowLeft,
+  Video,
+  ImagePlus,
   Check,
   Film,
   Image,
@@ -30,7 +33,7 @@ import {
   Save,
 } from "lucide-react";
 import Brand from "../components/Brand";
-import AccountMenu from "../components/AccountMenu";
+import SceneTimeline from "../components/SceneTimeline";
 import TemplateArtwork from "../components/TemplateArtwork";
 import TemplateBrowser from "../components/TemplateBrowser";
 import FormatSelect from "../components/FormatSelect";
@@ -60,6 +63,7 @@ const clock = (n: number) =>
     .toString()
     .padStart(2, "0")}`;
 const panels = [
+  { id: "video", label: "Video", icon: Video },
   { id: "media", label: "Media", icon: Image },
   { id: "text", label: "Text", icon: Type },
   { id: "elements", label: "Elements", icon: Shapes },
@@ -116,7 +120,9 @@ export default function StudioEditor({
   const [library, setLibrary] = useState<MediaAsset[]>([]);
   const [past, setPast] = useState<StudioProject[]>([]);
   const [future, setFuture] = useState<StudioProject[]>([]);
-  const [panel, setPanel] = useState("media");
+  const [panel, setPanel] = useState("video");
+  const [transitionIndex, setTransitionIndex] = useState(1);
+  const [timelineZoom, setTimelineZoom] = useState(12);
   const [selectedIndex, setSelected] = useState(0);
   const selected = Math.min(selectedIndex, project.scenes.length - 1);
   const [playing, setPlaying] = useState(false);
@@ -129,8 +135,7 @@ export default function StudioEditor({
   const [muted, setMuted] = useState(false);
   const [trim, setTrim] = useState<{ start: number; end: number } | null>(null);
   const trimRef = useRef<HTMLDialogElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const sceneRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -172,6 +177,21 @@ export default function StudioEditor({
         changes.title = project.title;
         changes.subtitle = project.subtitle;
       }
+    }
+    if (changes.scenes) {
+      let offset = 0;
+      const sources = new Map(
+        project.scenes.map((scene) => {
+          const source = scene.trimStart ?? offset;
+          offset += scene.duration;
+          return [scene.id, source] as const;
+        }),
+      );
+      changes.scenes = changes.scenes.map((scene) =>
+        sources.has(scene.id)
+          ? { ...scene, trimStart: scene.trimStart ?? sources.get(scene.id) }
+          : scene,
+      );
     }
     setPast((p) => [...p.slice(-39), project]);
     setFuture([]);
@@ -228,25 +248,30 @@ export default function StudioEditor({
     return () => clearInterval(timer);
   }, [playing, duration, time, project.scenes]);
   useEffect(() => {
-    const media = videoRef.current || audioRef.current;
-    if (!media) return;
-    if (playing) {
-      const start = project.scenes
-        .slice(0, selected)
-        .reduce((n, scene) => n + scene.duration, 0);
-      const sourceTime = (activeScene.trimStart ?? start) + time - start;
-      media.currentTime = Math.min(
-        sourceTime,
-        Number.isFinite(media.duration) ? media.duration : sourceTime,
-      );
-      void media.play().catch(() => {
-        setPlaying(false);
-        setNotice("This file could not be played in this browser.");
-      });
-    } else media.pause();
-    // Playback position is set when the playback state changes.
+    const start = project.scenes
+      .slice(0, selected)
+      .reduce((n, scene) => n + scene.duration, 0);
+    for (const media of [videoRef.current, audioRef.current]) {
+      if (!media) continue;
+      if (playing) {
+        const position =
+          media === audioRef.current
+            ? time
+            : (activeScene.trimStart ?? start) + time - start;
+        media.currentTime = Math.min(
+          position,
+          Number.isFinite(media.duration) ? media.duration : position,
+        );
+        void media.play().catch(() => {
+          setPlaying(false);
+          setNotice("This file could not be played in this browser.");
+        });
+      } else media.pause();
+    }
+    // Seek only when playback or the active scene changes, rather than on every timer tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, project.media, selected]);
+  }, [playing, project.media, project.audio, selected]);
+
   useEffect(() => {
     if (exportOpen) dialogRef.current?.showModal();
     else dialogRef.current?.close();
@@ -285,44 +310,45 @@ export default function StudioEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    const id = project.media?.assetId;
-    if (!id) return;
     let active = true;
-    let url = "";
-    void getMedia(id)
-      .then((asset) => {
-        if (!active) return;
-        if (!asset) {
-          setMissingMedia(true);
-          setNotice(
-            "This media file was deleted. Choose a replacement from Media.",
+    const urls: string[] = [];
+    for (const field of ["media", "audio", "cover"] as const) {
+      const id = project[field]?.assetId;
+      if (!id) continue;
+      void getMedia(id)
+        .then((asset) => {
+          if (!active) return;
+          if (!asset) {
+            if (field === "media") setMissingMedia(true);
+            setNotice(`This ${field} file was deleted. Choose a replacement.`);
+            return;
+          }
+          if (field === "media") setMissingMedia(false);
+          const url = URL.createObjectURL(asset.blob);
+          urls.push(url);
+          setProject((current) =>
+            current[field]?.assetId === id
+              ? {
+                  ...current,
+                  [field]: {
+                    ...current[field],
+                    src: url,
+                    name: asset.name,
+                    type: asset.type,
+                  },
+                }
+              : current,
           );
-          return;
-        }
-        setMissingMedia(false);
-        url = URL.createObjectURL(asset.blob);
-        setProject((p) =>
-          p.media?.assetId === id
-            ? {
-                ...p,
-                media: {
-                  ...p.media,
-                  src: url,
-                  name: asset.name,
-                  type: asset.type,
-                },
-              }
-            : p,
-        );
-      })
-      .catch(() => {
-        if (active) setNotice("Could not load this media file.");
-      });
+        })
+        .catch(() => {
+          if (active) setNotice("Could not load this media file.");
+        });
+    }
     return () => {
       active = false;
-      if (url) URL.revokeObjectURL(url);
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [project.media?.assetId]);
+  }, [project.media?.assetId, project.audio?.assetId, project.cover?.assetId]);
   useEffect(() => {
     if (!dirty) return;
     const timer = setTimeout(() => {
@@ -346,7 +372,7 @@ export default function StudioEditor({
         return;
       }
     }
-    onNavigate("projects");
+    onNavigate("home");
   };
   const seek = (value: number, keepPlaying = false) => {
     const next = Math.max(0, Math.min(duration, value));
@@ -364,12 +390,15 @@ export default function StudioEditor({
       .reduce((n, scene) => n + scene.duration, 0);
     const sourceTime =
       (project.scenes[index].trimStart ?? start) + next - start;
-    const media = videoRef.current || audioRef.current;
-    if (media && media.readyState)
-      media.currentTime = Math.min(
-        sourceTime,
-        Number.isFinite(media.duration) ? media.duration : sourceTime,
-      );
+    for (const media of [videoRef.current, audioRef.current]) {
+      if (media && media.readyState) {
+        const position = media === audioRef.current ? next : sourceTime;
+        media.currentTime = Math.min(
+          position,
+          Number.isFinite(media.duration) ? media.duration : position,
+        );
+      }
+    }
   };
   const pickScene = (index: number, keepPlaying = false) => {
     seek(
@@ -379,36 +408,33 @@ export default function StudioEditor({
       keepPlaying,
     );
   };
-  const clipWidths = project.scenes.map((scene) =>
-    Math.max(190, scene.duration * 22),
-  );
-  const stripWidth = clipWidths.reduce((n, width) => n + width + 10, 0);
   const sceneStart = project.scenes
     .slice(0, selected)
     .reduce((n, scene) => n + scene.duration, 0);
-  const playheadX =
-    clipWidths.slice(0, selected).reduce((n, width) => n + width + 10, 0) +
-    Math.max(0, Math.min(1, (time - sceneStart) / activeScene.duration)) *
-      clipWidths[selected];
-  useEffect(() => {
-    if (!playing)
-      sceneRefs.current.get(activeScene.id)?.scrollIntoView({
-        block: "nearest",
-        inline: "nearest",
-        behavior: "smooth",
-      });
-  }, [activeScene.id, playing]);
-  useEffect(() => {
-    const track = trackRef.current;
-    if (
-      playing &&
-      track &&
-      (playheadX > track.scrollLeft + track.clientWidth - 50 ||
-        playheadX < track.scrollLeft)
-    ) {
-      track.scrollTo({ left: Math.max(0, playheadX - 80), behavior: "smooth" });
-    }
-  }, [playheadX, playing]);
+  const soundtrack =
+    project.audio ??
+    (project.media?.type.startsWith("audio") ? project.media : null);
+  const entering = activeScene.transitionIn;
+  const transitionProgress =
+    playing && entering && entering.type !== "none"
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (time - sceneStart) /
+              Math.min(entering.duration, activeScene.duration),
+          ),
+        )
+      : 1;
+  const transitionStyle = {
+    opacity: entering?.type === "fade" ? transitionProgress : 1,
+    transform:
+      entering?.type === "slide"
+        ? `translateX(${(1 - transitionProgress) * 100}%)`
+        : entering?.type === "zoom"
+          ? `scale(${0.8 + transitionProgress * 0.2})`
+          : undefined,
+  };
   useEffect(() => {
     if (trim) trimRef.current?.showModal();
     else trimRef.current?.close();
@@ -424,7 +450,7 @@ export default function StudioEditor({
     try {
       const asset = await addMedia(file);
       edit({
-        media: {
+        [asset.type.startsWith("audio") ? "audio" : "media"]: {
           name: asset.name,
           src: "",
           type: asset.type,
@@ -566,6 +592,14 @@ export default function StudioEditor({
       </header>
       <div className="editor-workspace">
         <nav className="editor-rail" aria-label="Editor tools">
+          <button
+            className="workspace-back"
+            aria-label="Back to workspace"
+            title="Back to workspace"
+            onClick={leave}
+          >
+            <ArrowLeft size={21} />
+          </button>
           {panels.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -580,28 +614,14 @@ export default function StudioEditor({
               <span>{label}</span>
             </button>
           ))}
-          <div className="rail-account">
-            <AccountMenu
-              onNavigate={onNavigate}
-              onBeforeLogout={() => {
-                try {
-                  saveProject(project);
-                  setDirty(false);
-                  return true;
-                } catch {
-                  setNotice(
-                    "Please download your project before signing out; device storage is full.",
-                  );
-                  return false;
-                }
-              }}
-            />
-            <span>Account</span>
-          </div>
         </nav>
         <aside className={`asset-panel ${assetsOpen ? "mobile-open" : ""}`}>
           <div className="panel-heading">
-            <h2>{panels.find((p) => p.id === panel)?.label}</h2>
+            <h2>
+              {panel === "transitions"
+                ? "Transitions"
+                : panels.find((p) => p.id === panel)?.label}
+            </h2>
             <span className="subtle-tag">YOUR TOOLKIT</span>
             <button
               className="icon-button mobile-close"
@@ -611,6 +631,156 @@ export default function StudioEditor({
               <X size={16} />
             </button>
           </div>
+          {panel === "video" && (
+            <>
+              <p className="panel-description">
+                Arrange your story. Drag scenes to reorder, drag their edges to
+                trim, and use the connectors to add transitions.
+              </p>
+              <button
+                className="upload-button"
+                onClick={() => inputRef.current?.click()}
+              >
+                <Upload size={17} /> Import video
+              </button>
+              <input
+                hidden
+                ref={inputRef}
+                type="file"
+                accept="video/*"
+                onChange={(event) => {
+                  void upload(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+              />
+              <div className="video-scene-inspector">
+                <span className="eyebrow">SELECTED SCENE {selected + 1}</span>
+                <h3>{activeScene.name}</h3>
+                <p>{activeScene.duration.toFixed(1)} seconds</p>
+                <div className="scene-inspector-actions">
+                  <button onClick={splitScene}>
+                    <Scissors size={15} /> Split at playhead
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPlaying(false);
+                      setTrim({ start: 0, end: activeScene.duration });
+                    }}
+                  >
+                    <Crop size={15} /> Trim precisely
+                  </button>
+                  <button
+                    onClick={() => {
+                      const scenes = [...project.scenes];
+                      scenes.splice(selected + 1, 0, {
+                        ...activeScene,
+                        id: crypto.randomUUID(),
+                        name: `${activeScene.name} copy`,
+                        trimStart: activeScene.trimStart ?? sceneStart,
+                      });
+                      edit({ scenes });
+                      setSelected(selected + 1);
+                      setTime(sceneStart + activeScene.duration);
+                      setPlaying(false);
+                    }}
+                  >
+                    <Copy size={15} /> Duplicate scene
+                  </button>
+                  <button
+                    disabled={project.scenes.length === 1}
+                    onClick={() => {
+                      edit({
+                        scenes: project.scenes.filter(
+                          (_, index) => index !== selected,
+                        ),
+                      });
+                      setSelected(Math.max(0, selected - 1));
+                      setTime(0);
+                      setPlaying(false);
+                    }}
+                  >
+                    <Trash2 size={15} /> Delete scene
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {panel === "transitions" && (
+            <>
+              <p className="panel-description">
+                Between scenes {transitionIndex} and {transitionIndex + 1}.
+                Preview your transition with Play.
+              </p>
+              <div className="transition-options">
+                {(["none", "fade", "slide", "zoom"] as const).map((type) => (
+                  <button
+                    key={type}
+                    className={
+                      (project.scenes[transitionIndex]?.transitionIn?.type ||
+                        "none") === type
+                        ? "active"
+                        : ""
+                    }
+                    onClick={() =>
+                      edit({
+                        scenes: project.scenes.map((scene, index) =>
+                          index === transitionIndex
+                            ? {
+                                ...scene,
+                                transitionIn: {
+                                  type,
+                                  duration: scene.transitionIn?.duration || 0.5,
+                                },
+                              }
+                            : scene,
+                        ),
+                      })
+                    }
+                  >
+                    <span className={`transition-demo demo-${type}`} />
+                    <b>{type === "none" ? "No transition" : type}</b>
+                  </button>
+                ))}
+              </div>
+              <label className="field-label">
+                Transition duration (seconds)
+                <input
+                  aria-label="Transition duration"
+                  type="range"
+                  min="0.1"
+                  max={Math.min(
+                    2,
+                    project.scenes[transitionIndex]?.duration || 2,
+                  )}
+                  step="0.1"
+                  value={
+                    project.scenes[transitionIndex]?.transitionIn?.duration ||
+                    0.5
+                  }
+                  onChange={(event) =>
+                    edit({
+                      scenes: project.scenes.map((scene, index) =>
+                        index === transitionIndex
+                          ? {
+                              ...scene,
+                              transitionIn: {
+                                type: scene.transitionIn?.type || "fade",
+                                duration: Number(event.target.value),
+                              },
+                            }
+                          : scene,
+                      ),
+                    })
+                  }
+                />
+                <span>
+                  {project.scenes[transitionIndex]?.transitionIn?.duration ||
+                    0.5}
+                  s
+                </span>
+              </label>
+            </>
+          )}
           {panel === "media" && (
             <>
               <button
@@ -739,12 +909,13 @@ export default function StudioEditor({
                       className="media-item"
                       onClick={() =>
                         edit({
-                          media: {
-                            name: asset.name,
-                            type: asset.type,
-                            assetId: asset.id,
-                            src: "",
-                          },
+                          [asset.type.startsWith("audio") ? "audio" : "media"]:
+                            {
+                              name: asset.name,
+                              type: asset.type,
+                              assetId: asset.id,
+                              src: "",
+                            },
                         })
                       }
                     >
@@ -848,14 +1019,16 @@ export default function StudioEditor({
                 accept="audio/*"
                 onChange={(e) => upload(e.target.files?.[0])}
               />
-              {project.media?.type.startsWith("audio") && (
+              {soundtrack && (
                 <div className="audio-file">
                   <Music2 size={18} />
-                  <span>{project.media.name}</span>
+                  <span>{soundtrack.name}</span>
                   <button
                     className="icon-button"
                     aria-label="Remove audio"
-                    onClick={() => edit({ media: null })}
+                    onClick={() =>
+                      edit(project.audio ? { audio: null } : { media: null })
+                    }
                   >
                     <X size={15} />
                   </button>
@@ -1112,6 +1285,7 @@ export default function StudioEditor({
                   width: `${fittedWidth}px`,
                   maxWidth: "100%",
                   maxHeight: "none",
+                  ...transitionStyle,
                 }}
               >
                 <div
@@ -1178,8 +1352,8 @@ export default function StudioEditor({
                 </span>
               </div>
             )}
-            {project.media?.type.startsWith("audio") && (
-              <audio ref={audioRef} src={project.media.src} muted={muted} />
+            {soundtrack && (
+              <audio ref={audioRef} src={soundtrack.src} muted={muted} />
             )}
           </div>
           <div className="canvas-bottom">
@@ -1290,167 +1464,124 @@ export default function StudioEditor({
               </button>
             </div>
           )}
-          <div className="timeline-edit-tools">
-            {timed && (
-              <>
-                <span className="header-divider" />
-                <button
-                  className="icon-button"
-                  aria-label="Split scene at playhead"
-                  title="Split scene at playhead"
-                  onClick={splitScene}
-                >
-                  <Scissors size={17} />
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="Trim selected scene"
-                  title="Trim selected scene"
-                  onClick={() => {
-                    setPlaying(false);
-                    setTrim({ start: 0, end: activeScene.duration });
-                  }}
-                >
-                  <Crop size={17} />
-                </button>
-              </>
-            )}
+          <div className="timeline-media-tools">
+            <span className="header-divider" />
             <button
-              className="icon-button"
-              aria-label="Duplicate selected scene"
-              title="Duplicate selected scene"
+              className="text-button"
+              aria-label="Add audio"
               onClick={() => {
-                const scenes = [...project.scenes];
-                scenes.splice(selected + 1, 0, {
-                  ...activeScene,
-                  id: crypto.randomUUID(),
-                  name: `${activeScene.name} copy`,
-                });
-                edit({ scenes });
-                setPlaying(false);
-                setTime(sceneStart + activeScene.duration);
-                setSelected(selected + 1);
+                setPanel("audio");
+                setAssetsOpen(true);
               }}
             >
-              <Copy size={17} />
+              <Music2 size={16} />
+              <span>Audio</span>
             </button>
             <button
-              className="icon-button"
-              aria-label="Delete selected scene"
-              title="Delete selected scene"
-              disabled={project.scenes.length <= 1}
-              onClick={() => {
-                edit({
-                  scenes: project.scenes.filter((_, i) => i !== selected),
-                });
-                setPlaying(false);
-                setSelected(Math.max(0, selected - 1));
-                setTime(
-                  project.scenes
-                    .slice(0, Math.max(0, selected - 1))
-                    .reduce((n, scene) => n + scene.duration, 0),
-                );
-              }}
+              className="text-button"
+              aria-label="Add cover photo"
+              onClick={() => coverInputRef.current?.click()}
             >
-              <Trash2 size={17} />
+              <ImagePlus size={16} />
+              <span>Cover</span>
             </button>
           </div>
+          <label className="timeline-zoom">
+            Zoom
+            <input
+              type="range"
+              aria-label="Timeline zoom"
+              min="6"
+              max="36"
+              step="2"
+              value={timelineZoom}
+              onChange={(event) => setTimelineZoom(Number(event.target.value))}
+            />
+          </label>
           <span className="timeline-total">
             {project.scenes.length} {mode === "present" ? "slides" : "scenes"}
             {!timed && ` · ${clock(duration)}`}
           </span>
         </div>
-        <div className="scene-strip-scroll" ref={trackRef}>
-          <div
-            className="scene-strip-content"
-            style={{ width: stripWidth + 120 }}
-          >
-            {timed && (
-              <div className="scene-ruler">
-                {project.scenes.map((scene, index) => (
-                  <span
-                    key={scene.id}
-                    style={{ width: clipWidths[index] + 10 }}
-                  >
-                    {clock(
-                      project.scenes
-                        .slice(0, index)
-                        .reduce((n, item) => n + item.duration, 0),
-                    )}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="scene-track">
-              {project.scenes.map((scene, index) => (
-                <button
-                  key={scene.id}
-                  ref={(node) => {
-                    if (node) sceneRefs.current.set(scene.id, node);
-                    else sceneRefs.current.delete(scene.id);
-                  }}
-                  className={`scene-clip ${selected === index ? "active" : ""}`}
-                  style={{ width: clipWidths[index] }}
-                  onClick={() => pickScene(index)}
-                  aria-label={`Scene ${index + 1}: ${scene.name}`}
-                  aria-pressed={selected === index}
-                >
-                  <TemplateArtwork
-                    style={project.templateStyle}
-                    variant={scene.variant}
-                    aspect={canvasWidth / canvasHeight}
-                  />
-                  <div>
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    {scene.name}
-                    <small>{clock(scene.duration)}</small>
-                  </div>
-                </button>
-              ))}
-              <button
-                className="add-scene-tile"
-                aria-label="Add scene"
-                onClick={() => {
-                  edit({
-                    scenes: [
-                      ...project.scenes,
-                      {
-                        id: crypto.randomUUID(),
-                        name: "A new idea",
-                        variant: project.scenes.length % 3,
-                        duration: 8,
-                      },
-                    ],
-                  });
-                  setPlaying(false);
-                  setTime(duration);
-                  setSelected(project.scenes.length);
-                }}
-              >
-                <Plus size={25} />
-                <span>{mode === "present" ? "Add slide" : "Add scene"}</span>
-              </button>
-            </div>
-            {timed && project.media?.type.startsWith("audio") && (
-              <button
-                className="audio-track has-audio"
-                style={{ width: stripWidth - 10 }}
-                onClick={() => {
-                  setPanel("audio");
-                  setAssetsOpen(true);
-                }}
-              >
-                <Music2 size={14} />
-                {project.media.name}
-              </button>
-            )}
-            {timed && (
-              <div className="timeline-playhead" style={{ left: playheadX }}>
-                <span />
-              </div>
-            )}
-          </div>
-        </div>
+        <SceneTimeline
+          project={project}
+          selected={selected}
+          time={time}
+          playing={playing}
+          zoom={timelineZoom}
+          onSelect={pickScene}
+          onSeek={(value) => seek(value)}
+          onChange={(scenes, index) => {
+            edit({ scenes });
+            setSelected(index);
+            setPlaying(false);
+            setTime(
+              scenes
+                .slice(0, index)
+                .reduce((n, scene) => n + scene.duration, 0),
+            );
+          }}
+          onAdd={() => {
+            edit({
+              scenes: [
+                ...project.scenes,
+                {
+                  id: crypto.randomUUID(),
+                  name: "A new idea",
+                  variant: project.scenes.length % 3,
+                  duration: 8,
+                },
+              ],
+            });
+            setPlaying(false);
+            setTime(duration);
+            setSelected(project.scenes.length);
+          }}
+          onAudio={() => {
+            setPanel("audio");
+            setAssetsOpen(true);
+          }}
+          onCover={() => coverInputRef.current?.click()}
+          onTransition={(index) => {
+            setTransitionIndex(index);
+            pickScene(index);
+            setPanel("transitions");
+            setAssetsOpen(true);
+          }}
+        />
+        <input
+          ref={coverInputRef}
+          hidden
+          type="file"
+          accept="image/*"
+          aria-label="Upload cover photo"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            if (!file.type.startsWith("image/")) {
+              setNotice("Choose an image for the cover.");
+              return;
+            }
+            try {
+              const asset = await addMedia(file);
+              edit({
+                cover: {
+                  assetId: asset.id,
+                  src: "",
+                  name: asset.name,
+                  type: asset.type,
+                },
+              });
+              setLibrary(await listMedia());
+              setNotice("Cover photo saved.");
+            } catch {
+              setNotice(
+                "The cover could not be saved. Check available storage.",
+              );
+            }
+          }}
+        />
       </section>
       {notice && (
         <div className="toast" role="status">

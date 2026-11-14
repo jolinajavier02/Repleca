@@ -121,7 +121,17 @@ export default function Workspace({
             (s) =>
               typeof s.name !== "string" ||
               !Number.isFinite(s.duration) ||
-              s.duration < 1 ||
+              s.duration < 0.5 ||
+              s.duration > 120 ||
+              (s.trimStart !== undefined &&
+                (!Number.isFinite(s.trimStart) || s.trimStart < 0)) ||
+              (s.transitionIn !== undefined &&
+                (!["none", "fade", "slide", "zoom"].includes(
+                  s.transitionIn.type,
+                ) ||
+                  !Number.isFinite(s.transitionIn.duration) ||
+                  s.transitionIn.duration < 0.1 ||
+                  s.transitionIn.duration > 2)) ||
               !Number.isInteger(s.variant) ||
               s.variant < 0 ||
               s.variant > 5,
@@ -152,17 +162,23 @@ export default function Workspace({
               ))) ||
           !/^#[0-9a-f]{6}$/i.test(p.color) ||
           ![p.scale, p.opacity, p.fontSize].every(Number.isFinite) ||
-          (p.media &&
-            (!/^data:(image|video|audio)\//.test(p.media.src) ||
-              !/^(image|video|audio)\//.test(p.media.type)))
+          [p.media, p.audio, p.cover].some(
+            (media) =>
+              media &&
+              (typeof media.name !== "string" ||
+                !/^data:(image|video|audio)\//.test(media.src) ||
+                !/^(image|video|audio)\//.test(media.type)),
+          )
         )
           throw new Error();
-        if (p.media?.src.startsWith("data:")) {
-          const blob = await (await fetch(p.media.src)).blob();
+        for (const field of ["media", "audio", "cover"] as const) {
+          const reference = p[field];
+          if (!reference?.src.startsWith("data:")) continue;
+          const blob = await (await fetch(reference.src)).blob();
           const asset = await addMedia(
-            new File([blob], p.media.name, { type: p.media.type }),
+            new File([blob], reference.name, { type: reference.type }),
           );
-          p.media = {
+          p[field] = {
             name: asset.name,
             type: asset.type,
             assetId: asset.id,

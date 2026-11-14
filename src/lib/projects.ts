@@ -7,6 +7,7 @@ export type Scene = {
   variant: number;
   duration: number;
   trimStart?: number;
+  transitionIn?: { type: "none" | "fade" | "slide" | "zoom"; duration: number };
   title?: string;
   subtitle?: string;
 };
@@ -23,6 +24,8 @@ export type StudioProject = {
   ratio: string;
   scenes: Scene[];
   media: { name: string; src: string; type: string; assetId?: string } | null;
+  audio?: StudioProject["media"];
+  cover?: StudioProject["media"];
   script: string;
   updated: string;
   cells?: string[][];
@@ -68,6 +71,12 @@ export function saveProject(project: StudioProject) {
     JSON.stringify([
       {
         ...project,
+        audio: project.audio?.assetId
+          ? { ...project.audio, src: "" }
+          : project.audio,
+        cover: project.cover?.assetId
+          ? { ...project.cover, src: "" }
+          : project.cover,
         media: project.media?.assetId
           ? { ...project.media, src: "" }
           : project.media,

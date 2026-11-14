@@ -219,45 +219,58 @@ export function mediaDataUrl(blob: Blob): Promise<string> {
   });
 }
 export async function portableProject(project: StudioProject) {
-  if (!project.media?.assetId) return project;
-  const asset = await getMedia(project.media.assetId);
-  if (!asset)
-    throw new Error(
-      "The project’s media file was deleted. Replace it before downloading the project.",
-    );
-  return {
-    ...project,
-    media: {
+  const portable = { ...project };
+  for (const field of ["media", "audio", "cover"] as const) {
+    const reference = project[field];
+    if (!reference?.assetId) continue;
+    const asset = await getMedia(reference.assetId);
+    if (!asset)
+      throw new Error(
+        `The project's ${field} file was deleted. Replace it before downloading the project.`,
+      );
+    portable[field] = {
       name: asset.name,
       type: asset.type,
       src: await mediaDataUrl(asset.blob),
-    },
-  };
+    };
+  }
+  return portable;
 }
+
 export async function collectProjectMedia() {
   const owner = accountStorageOwner();
   const existing = await listMedia();
   for (const project of readProjects()) {
-    if (accountStorageOwner() !== owner) return;
-    if (!project.media?.src.startsWith("data:") || project.media.assetId)
-      continue;
-    let asset = existing.find(
-      (file) => file.sourceKey === `project:${project.id}`,
-    );
-    if (!asset) {
-      const blob = await (await fetch(project.media.src)).blob();
-      asset = await addMedia(
-        new File([blob], project.media.name, { type: project.media.type }),
-        null,
-        `project:${project.id}`,
-      );
+    let changed = false;
+    for (const field of ["media", "audio", "cover"] as const) {
+      if (accountStorageOwner() !== owner) return;
+      const reference = project[field];
+      if (!reference?.src.startsWith("data:") || reference.assetId) continue;
+      const key =
+        field === "media"
+          ? `project:${project.id}`
+          : `project:${project.id}:${field}`;
+      let asset = existing.find((file) => file.sourceKey === key);
+      if (!asset) {
+        const blob = await (await fetch(reference.src)).blob();
+        asset = await addMedia(
+          new File([blob], reference.name, { type: reference.type }),
+          null,
+          key,
+        );
+      }
+      project[field] = {
+        name: asset.name,
+        type: asset.type,
+        assetId: asset.id,
+        src: "",
+      };
+      changed = true;
     }
-    saveProject({
-      ...project,
-      media: { name: asset.name, type: asset.type, assetId: asset.id, src: "" },
-    });
+    if (changed) saveProject(project);
   }
 }
+
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
